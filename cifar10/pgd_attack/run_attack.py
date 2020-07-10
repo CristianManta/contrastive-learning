@@ -22,7 +22,7 @@ parser = argparse.ArgumentParser('Attack an example CIFAR10 example with L2PGD')
 
 parser.add_argument('--data-dir', type=str, default='/home/campus/oberman-lab/data/',
         metavar='DIR', help='Directory where ImageNet data is saved')
-parser.add_argument('--model-path', type=str, default='/home/campus/ryan.campbell2/flashlight/experiment_template/logs/cifar10/ResNet18/baseline/best.pth.tar', metavar='PATH',
+parser.add_argument('--model-path', type=str, default='/home/campus/ryan.campbell2/ContrastiveTeamO/cifar10/trained_models/baseline/best.pth.tar', metavar='PATH',
         help='path to the .pth.tar trained model file')
 
 parser.add_argument('--criterion', type=str, default='top1',
