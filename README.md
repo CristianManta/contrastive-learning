@@ -1,2 +1,5 @@
-# ContrastiveTeamO
-Tools to test out our contrastive loss models
+# ContrastiveTeam0
+
+## Aplace to push new ideas for Contrastive Learning
+
+
