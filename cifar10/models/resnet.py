@@ -1,5 +1,6 @@
 import torch as th
 from torch import nn
+import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
 from . import blocks
 
@@ -68,11 +69,15 @@ class ResNet(nn.Module):
         else:
             self.dropout = False
 
-        self.fc = Linear((2**i)*base_channels, classes, nonlinear=last_layer_nonlinear, bn=last_layer_bn)
+        #self.fc = Linear((2**i)*base_channels, classes, nonlinear=last_layer_nonlinear, bn=last_layer_bn)
 
         self.nonlinear=nonlinear
-        self.softmax = softmax
+        #self.softmax = softmax
         self.bn = bn  # this is where batch norm is executed, a boolean
+
+        # projection MLP
+        self.l1 = nn.Linear(512, 512)
+        self.l2 = nn.Linear(512, 128)
 
     def fuse_bn(self):
         if self.bn:
@@ -102,19 +107,23 @@ class ResNet(nn.Module):
 
 
     def forward(self, x):
-        x = self.layer0(x)
+        h = self.layer0(x)
         if self.maxpool:
-            x = self.maxpool(x)
-        x = self.layers(x)
-        x = self.pool(x)
-        x = self.view(x)
-        if self.dropout:
-            x = self.dropout(x)
-        x = self.fc(x)
+            h = self.maxpool(h)
+        h = self.layers(h)
+        h = self.pool(h)
+        h = self.view(h)
+        #if self.dropout:
+        #    x = self.dropout(x)
+        #x = self.fc(x)
 
-        if self.softmax:
-            x = x.softmax(dim=-1)
+        #if self.softmax:
+        #    x = x.softmax(dim=-1)
 
-        return x
+        x = self.l1(h)
+        x = F.relu(x)
+        x = self.l2(x)
+
+        return h, x
 
 

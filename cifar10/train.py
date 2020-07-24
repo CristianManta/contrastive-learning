@@ -7,10 +7,12 @@ import numpy as np
 import random
 import ast, bisect
 import time, datetime
+from statistics import mean
 
 import torch
 import torch.nn as nn
 import torch.backends.cudnn as cudnn
+import torch.nn.functional as F
 from torch import optim
 from torch.optim.lr_scheduler import LambdaLR
 import torchnet as tnt
@@ -18,8 +20,11 @@ import torchnet as tnt
 import torchvision
 import torchvision.transforms as transforms
 from torchvision.datasets import CIFAR10
+from torch.utils.data.sampler import SubsetRandomSampler
+from torch.utils.data import DataLoader
 
 import models.cifar as cifarmodels
+from ContrastiveTeamO.loss.nt_xent import NTXentLoss
 
 from ContrastiveTeamO.custom_transforms import get_color_distortion, GaussianBlur
 
@@ -38,8 +43,8 @@ parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
 #        help='directory for outputting log files. (default: ./logs/DATASET/MODEL/TIMESTAMP/)')
 
 group1 = parser.add_argument_group('Model hyperparameters')
-group1.add_argument('--model', type=str, default='ResNet34',
-        help='Model architecture (default: ResNet34)')
+group1.add_argument('--model', type=str, default='ResNet50',
+        help='Model architecture (default: ResNet50)')
 group1.add_argument('--dropout',type=float, default=0, metavar='P',
         help = 'Dropout probability, if model supports dropout (default: 0)')
 group1.add_argument('--bn',action='store_true', dest='bn',
@@ -64,7 +69,7 @@ group1.add_argument('--model-args',type=str,
 group0 = parser.add_argument_group('Optimizer hyperparameters')
 group0.add_argument('--batch-size', type=int, default=128, metavar='N',
         help='Input batch size for training. (default: 128)')
-group0.add_argument('--lr', type=float, default=0.1, metavar='LR',
+group0.add_argument('--lr', type=float, default=0.15, metavar='LR',
         help='Initial step size. (default: 0.1)')
 group0.add_argument('--lr-schedule', type=str, metavar='[[epoch,ratio]]',
         default='[[0,1],[60,0.2],[120,0.04],[160,0.008]]', help='List of epochs and multiplier '
@@ -103,27 +108,40 @@ print('\n')
 # Do 3 deparate train loaders, one with each data augmentation
 root = os.path.join(args.data_dir,'cifar10')
 
-ds_train1 = CIFAR10(root, download=True, train=True, transform=transforms.Compose([transforms.RandomResizedCrop(size=32), transforms.ToTensor()]))
-train_loader1 = torch.utils.data.DataLoader(
-                    ds_train1,
-                    batch_size=args.batch_size, shuffle=False,
-                    num_workers=4, pin_memory=True)
-ds_train2 = CIFAR10(root, download=True, train=True, transform=transforms.Compose([get_color_distortion(), transforms.ToTensor()]))
-train_loader2 = torch.utils.data.DataLoader(
-                    ds_train2,
-                    batch_size=args.batch_size, shuffle=False,
-                    num_workers=4, pin_memory=True)
-ds_train3 = CIFAR10(root, download=True, train=True, transform=transforms.Compose([GaussianBlur(kernel_size=3), transforms.ToTensor()]))
-train_loader3 = torch.utils.data.DataLoader(
-                    ds_train3,
-                    batch_size=args.batch_size, shuffle=False,
-                    num_workers=4, pin_memory=True)
+class SimCLRDataTransform(object):
+    def __init__(self, transform):
+        self.transform = transform
 
-ds_test = CIFAR10(root, download=True, train=False, transform=transforms.Compose([transforms.ToTensor()]))
-test_loader = torch.utils.data.DataLoader(
-                    ds_test,
-                    batch_size=args.batch_size, shuffle=False,
-                    num_workers=4, pin_memory=True)
+    def __call__(self, sample):
+        xi = self.transform(sample)
+        xj = self.transform(sample)
+        return xi, xj
+
+color_jitter = transforms.ColorJitter(0.8, 0.8, 0.8, 0.2)
+data_transforms = transforms.Compose([transforms.RandomResizedCrop(size=32),
+                                      transforms.RandomHorizontalFlip(),
+                                      transforms.RandomApply([color_jitter], p=0.8),
+                                      transforms.RandomGrayscale(p=0.2),
+                                      GaussianBlur(kernel_size=3),
+                                      transforms.ToTensor()])
+data_augment = data_transforms
+ds_train = CIFAR10(root, download=True, train=True, transform=SimCLRDataTransform(data_augment))
+
+num_train = len(ds_train)
+indices = list(range(num_train))
+np.random.shuffle(indices)
+
+valid_size = 0.05
+split = int(np.floor(valid_size * num_train))
+train_idx, valid_idx = indices[split:], indices[:split]
+
+train_sampler = SubsetRandomSampler(train_idx)
+valid_sampler = SubsetRandomSampler(valid_idx)
+
+train_loader = DataLoader(ds_train, batch_size=128, sampler=train_sampler,
+                          num_workers=4, drop_last=True, shuffle=False)
+valid_loader = DataLoader(ds_train, batch_size=128, sampler=valid_sampler,
+                          num_workers=4, drop_last=True)
 
 # initialize model and move it the GPU (if available)
 classes = 10
@@ -140,6 +158,8 @@ if has_cuda:
     model = model.cuda()
     if torch.cuda.device_count()>1:
         model = nn.DataParallel(model)
+
+#print(model)
 
 # Set Optimizer and learning rate schedule
 bparams=[]
@@ -166,26 +186,82 @@ def scheduler(optimizer,args):
     return lscheduler
 schedule = scheduler(optimizer,args)
 
+# define loss
+nt_xent_criterion = NTXentLoss(device=torch.cuda.current_device(), batch_size=128, temperature=0.5, use_cosine_similarity=True)
+
 # training code
 
 def train(epoch):
     model.train()
+    batch_ix = 0
 
-    for i, (data1, data2, data3) in enumerate(zip(train_loader1, train_loader2, train_loader3)):
-        # So we just loaded in 3 copies of the same batch of images, each with a different transformation
-
-        y, x1, x2, x3 = data1[1], data1[0], data2[0], data3[0]
+    for (xis, xjs), y in train_loader:
 
         if has_cuda:
             y = y.cuda()
-            x1, x2, x3 = x1.cuda(), x2.cuda(), x3.cuda()
+            xis, xjs = xis.cuda(), xjs.cuda()
 
-        exit()
+        optimizer.zero_grad()
+
+        xis.requires_grad = True
+        xjs.requires_grad = True
+
+        his, zis = model(xis)
+        hjs, zjs = model(xjs)
+
+        # normalize projection feature vectors
+        zis = F.normalize(zis, dim=1)
+        zjs = F.normalize(zjs, dim=1)
+
+        loss = nt_xent_criterion(zis, zjs)
+
+        loss.backward()
+        optimizer.step()
+
+        if batch_ix % 100 == 0:
+            print('[Epoch %2d, batch %3d] training loss: %.3g' %
+                (epoch, batch_ix, loss.data.item()))
+
+        batch_ix += 1
+
+def test():
+
+    loss_vals = []
+
+    with torch.no_grad():
+
+        for (xis, xjs), y in valid_loader:
+
+            if has_cuda:
+                xis, xjs, y = xis.cuda(), xjs.cuda(), y.cuda()
+
+            his, zis = model(xis)
+            hjs, zjs = model(xjs)
+
+            zis = F.normalize(zis, dim=1)
+            zjs = F.normalize(zjs, dim=1)
+
+            loss = nt_xent_criterion(zis, zjs)
+            loss_vals.append(loss.data.item())
+
+    loss_val = mean(loss_vals)
+    print('Avg. test loss: %.3g \n' % (loss_val))
+
+    return loss_val
 
 def main():
+
+    best_loss = 10000.0
+
     for epoch in range(1, args.epochs + 1):
         train(epoch)
-        test()
+        test_loss = test()
+
+        torch.save({'state_dict':model.state_dict()}, './runs/encoder_checkpoint.pth.tar')
+
+        if test_loss < best_loss:
+            shutil.copyfile('./runs/encoder_checkpoint.pth.tar', './runs/encoder_best.pth.tar')
+            best_loss = test_loss
 
 if __name__=="__main__":
     main()

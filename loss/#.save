@@ -1,0 +1,2 @@
+        zis = F.normalize(zis, dim=1)
+        zjs = F.normalize(zjs, dim=1)
