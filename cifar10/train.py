@@ -33,8 +33,8 @@ parser.add_argument('--data-dir', type=str, default='/home/campus/oberman-lab/da
         help='Directory where CIFAR-10 data is saved')
 parser.add_argument('--seed', type=int, default=0, metavar='S',
         help='random seed (default: 0)')
-parser.add_argument('--epochs', type=int, default=200, metavar='N',
-        help='number of epochs to train (default: 200)')
+parser.add_argument('--epochs', type=int, default=100, metavar='N',
+        help='number of epochs to train (default: 100)')
 parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
         help='input batch size for testing (default: 1000)')
 #parser.add_argument('--log-interval', type=int, default=100, metavar='N',
@@ -70,10 +70,10 @@ group0 = parser.add_argument_group('Optimizer hyperparameters')
 group0.add_argument('--batch-size', type=int, default=128, metavar='N',
         help='Input batch size for training. (default: 128)')
 group0.add_argument('--lr', type=float, default=0.15, metavar='LR',
-        help='Initial step size. (default: 0.1)')
+        help='Initial step size. (default: 0.15)')
 group0.add_argument('--lr-schedule', type=str, metavar='[[epoch,ratio]]',
-        default='[[0,1],[60,0.2],[120,0.04],[160,0.008]]', help='List of epochs and multiplier '
-        'for changing the learning rate (default: [[0,1],[60,0.2],[120,0.04],[160,0.008]]). ')
+        default='[[0,1],[30,0.2],[60,0.04],[80,0.008]]', help='List of epochs and multiplier '
+        'for changing the learning rate (default: [[0,1],[30,0.2],[60,0.04],[80,0.008]]). ')
 group0.add_argument('--momentum', type=float, default=0.9, metavar='M',
        help='SGD momentum parameter (default: 0.9)')
 
