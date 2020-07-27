@@ -162,29 +162,9 @@ if has_cuda:
 #print(model)
 
 # Set Optimizer and learning rate schedule
-bparams=[]
-oparams=[]
-for name, p in model.named_parameters():
-    if 'bias' in name:
-        bparams.append(p)
-    else:
-        oparams.append(p)
-
-# Only layer weight matrices should have weight decay, not layer biases
-optimizer = optim.SGD([{'params':oparams,'weight_decay':args.decay},
-                       {'params':bparams,'weight_decay':0.}],
-                  lr = args.lr,
-                  momentum = args.momentum,
-                  nesterov = False)
-
-def scheduler(optimizer,args):
-    """Return a hyperparmeter scheduler for the optimizer"""
-    lS = np.array(ast.literal_eval(args.lr_schedule))
-    llam = lambda e: float(lS[max(bisect.bisect_right(lS[:,0], e)-1,0),1])
-    lscheduler = LambdaLR(optimizer, llam)
-
-    return lscheduler
-schedule = scheduler(optimizer,args)
+optimizer = torch.optim.Adam(model.parameters(), args.lr, weight_decay=10e-6)
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=len(train_loader), eta_min=0,
+                                                       last_epoch=-1)
 
 # define loss
 nt_xent_criterion = NTXentLoss(device=torch.cuda.current_device(), batch_size=128, temperature=0.5, use_cosine_similarity=True)
@@ -195,6 +175,7 @@ def train(epoch):
     model.train()
     batch_ix = 0
 
+    print("Current LR: {}".format(scheduler.get_lr()[0]))
     for (xis, xjs), y in train_loader:
 
         if has_cuda:
@@ -223,6 +204,10 @@ def train(epoch):
                 (epoch, batch_ix, loss.data.item()))
 
         batch_ix += 1
+
+    # warmup for the first 10 epochs
+    if epoch >= 10:
+        scheduler.step()
 
 def test():
 

@@ -106,12 +106,12 @@ test_loader = torch.utils.data.DataLoader(
                     num_workers=4, pin_memory=True)
 
 ds_train = CIFAR10(root, download=True, train=True, transform=transforms.Compose([transforms.ToTensor()]))
-#num_train = len(ds_train)
-num_train = 5000
-Ix = torch.arange(num_train) # Use the first N images of test set
-subset = Subset(ds_test, Ix)
+num_train = len(ds_train)
+#num_train = 10000
+#Ix = torch.arange(num_train) # Use the first N images of test set
+#subset = Subset(ds_test, Ix)
 train_loader = torch.utils.data.DataLoader(
-                    subset,
+                    ds_train,
                     batch_size=args.batch_size, shuffle=True,
                     num_workers=4, pin_memory=True)
 
@@ -125,13 +125,20 @@ model_args.update(bn=args.bn, classes=classes, bias=args.bias,
                   softmax=False,last_layer_nonlinear=args.last_layer_nonlinear,
                   dropout=args.dropout)
 model = getattr(cifarmodels, args.model)(**model_args)
-savedict = torch.load('./runs/encoder_best.pth.tar', map_location='cpu')
-model.load_state_dict(savedict['state_dict'])
-model.eval()
 if has_cuda:
     model = model.cuda()
     if torch.cuda.device_count()>1:
         model = nn.DataParallel(model)
+
+savedict = torch.load('./runs/encoder_best.pth.tar', map_location='cpu')
+model.load_state_dict(savedict['state_dict'])
+model.eval()
+for p in model.parameters():
+    p.requires_grad_(False)
+#if has_cuda:
+#    model = model.cuda()
+#    if torch.cuda.device_count()>1:
+#        model = nn.DataParallel(model)
 
 # Get model output dim
 for i, (x,_) in enumerate(train_loader):
@@ -180,5 +187,14 @@ y_train, y_test = y_train.cpu().numpy(), y_test.cpu().numpy()
 print("Fitting the logistic regression classifier...")
 scaler = preprocessing.StandardScaler()
 scaler.fit(train_features)
-linear_model_eval(scaler.transform(train_features), y_train, scaler.transform(test_features), y_test)
+clf = LogisticRegression(random_state=0, max_iter=1200, solver='lbfgs', C=1.0)
+clf.fit(scaler.transform(train_features), y_train)
+
+# Test the classifier...
+print("Logistic Regression feature eval")
+print("Train score:", clf.score(scaler.transform(train_features), y_train))
+print("Test score:", clf.score(scaler.transform(test_features), y_test))
+
+# free up space on the CPU
 del train_features, y_train, test_features, y_test
+
