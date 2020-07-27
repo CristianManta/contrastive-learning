@@ -41,10 +41,12 @@ parser.add_argument('--seed', type=int, default=0, metavar='S',
         help='random seed (default: 0)')
 parser.add_argument('--batch-size', type=int, default=128, metavar='N',
         help='Input batch size for training. (default: 128)')
-parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
-        help='input batch size for testing (default: 1000)')
-parser.add_argument('--num-images', type=int, default=1000, metavar='NI',
-        help='number of test images to classify (default=1000)')
+parser.add_argument('--test-batch-size', type=int, default=100, metavar='N',
+        help='input batch size for testing (default: 100)')
+parser.add_argument('--num-train-images', type=int, default=10000, metavar='NI',
+        help='number of test images to classify (default=10000)')
+parser.add_argument('--num-test-images', type=int, default=10000, metavar='NI',
+        help='number of test images to classify (default=10000)')
 parser.add_argument('--random-subset', action='store_true',
         default=False, help='use random subset of test images (default: False)')
 
@@ -93,25 +95,32 @@ print('\n')
 root = os.path.join(args.data_dir,'cifar10')
 
 ds_test = CIFAR10(root, download=True, train=False, transform=transforms.Compose([transforms.ToTensor()]))
+if args.num_test_images > 10000:
+    args.num_test_images = 10000
 if args.random_subset:
-    Ix = np.random.choice(10000, size=args.num_images, replace=False)
+    Ix = np.random.choice(10000, size=args.num_test_images, replace=False)
     Ix = torch.from_numpy(Ix)
 else:
-    Ix = torch.arange(args.num_images) # Use the first N images of test set
+    Ix = torch.arange(args.num_test_images) # Use the first N images of test set
 subset = Subset(ds_test, Ix)
-num_test = args.num_images
+num_test = args.num_test_images
 test_loader = torch.utils.data.DataLoader(
                     subset,
                     batch_size=args.test_batch_size, shuffle=False,
                     num_workers=4, pin_memory=True)
 
 ds_train = CIFAR10(root, download=True, train=True, transform=transforms.Compose([transforms.ToTensor()]))
-num_train = len(ds_train)
-#num_train = 10000
-#Ix = torch.arange(num_train) # Use the first N images of test set
-#subset = Subset(ds_test, Ix)
+if args.num_test_images > 50000:
+    args.num_test_images = 50000
+if args.random_subset:
+    Ix = np.random.choice(50000, size=args.num_train_images, replace=False)
+    Ix = torch.from_numpy(Ix)
+else:
+    Ix = torch.arange(args.num_train_images) # Use the first N images of test set
+subset = Subset(ds_train, Ix)
+num_train = args.num_train_images
 train_loader = torch.utils.data.DataLoader(
-                    ds_train,
+                    subset,
                     batch_size=args.batch_size, shuffle=True,
                     num_workers=4, pin_memory=True)
 
@@ -197,4 +206,3 @@ print("Test score:", clf.score(scaler.transform(test_features), y_test))
 
 # free up space on the CPU
 del train_features, y_train, test_features, y_test
-
