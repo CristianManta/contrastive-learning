@@ -171,6 +171,9 @@ scaler = preprocessing.StandardScaler()
 scaler.fit(train_features)
 clf = LogisticRegression(random_state=0, max_iter=1200, solver='lbfgs', C=1.0)
 clf.fit(scaler.transform(train_features), y_train)
+
+del train_features, y_train
+
 print('    done.')
 
 ############################
@@ -181,7 +184,7 @@ if args.criterion=='cohen':
 elif args.criterion=='top1':
     criterion = lambda x, y: Top1Criterion(x,y,model)
 elif args.criterion=='logistic':
-    criterion = lambda x, y: LogRegCriterion(x,y,model,clf)
+    criterion = lambda x, y: LogRegCriterion(x,y,model,clf,scaler)
 else:
     raise ValueError('Select a valid predection criterion')
 

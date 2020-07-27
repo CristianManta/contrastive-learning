@@ -32,17 +32,18 @@ def CohenCriterion(x,y,model,std,num_samples=100):
 
     return final_preds == y
 
-def LogRegCriterion(x,y,model,clf):
+def LogRegCriterion(x,y,model,clf,scaler):
     """ The Logistic Regression Classification criterion
 
         x -> images (torch float tensor)
         y -> true labels (torch Long tensor)
         model -> pytorch model that maps images to feature vectors
-        clf -> the trained logistic regression classifier that maps features to classes """
+        clf -> the trained logistic regression classifier that maps features to classes 
+        scaler -> used for normalizing the features (I think) """
 
     out, _ = model(x)
     out = out.cpu().numpy()
-    out = scaler.transform(out)
+    out = scaler.transform(out)  # normalization
     y_pred = clf.predict(out)
     y_pred = torch.LongTensor(y_pred)
     if x.is_cuda:
