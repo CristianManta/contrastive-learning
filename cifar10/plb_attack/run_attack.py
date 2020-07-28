@@ -1,5 +1,6 @@
 import argparse, yaml
 import os, sys
+import ast, bisect
 
 import numpy as np
 import torch
@@ -12,7 +13,7 @@ from torch.utils.data import Subset
 sys.path.append('../')
 
 from InitMethods import GaussianInitialize, UniformInitialize, SafetyInitialize
-from proxlogbarrier_Top1 import Top1Criterion, CohenCriterion, Attack, LogRegCriterion
+from proxlogbarrier_LogReg import Attack, LogRegCriterion
 
 import ContrastiveTeamO.cifar10.models.cifar as cifarmodels
 
@@ -21,21 +22,38 @@ from sklearn.linear_model import LogisticRegression
 from sklearn import preprocessing
 import importlib.util
 
-parser = argparse.ArgumentParser('Attack an example MNIST model with the ProxLogBarrier attack.'
+parser = argparse.ArgumentParser('Attack an example CIFAR-10 encoder model with the ProxLogBarrier attack.'
                                   'Writes adversarial distances (and optionally images) to a npz file.')
 
 groups0 = parser.add_argument_group('Required arguments')
 groups0.add_argument('--data-dir', type=str, default='/home/campus/oberman-lab',
         help='Directory where CIFAR10 data is saved')
-groups0.add_argument('--model-path', type=str,default=None, required=True,
+groups0.add_argument('--model-path', type=str,default='/home/campus/ryan.campbell2/ContrastiveTeamO/cifar10/runs/encoder_best.pth.tar',
         metavar='DIR', help='Directory where model is saved')
 groups0.add_argument('--parallel', action='store_true', dest='parallel',
         help='only allow exact matches to model keys during loading')
 groups0.add_argument('--strict', action='store_true', dest='strict',
         help='only allow exact matches to model keys during loading')
-groups0.add_argument('--criterion', type=str, default='top1',
+groups0.add_argument('--criterion', type=str, default='logistic',
         help='given a model and x, how to we estimate y?, choices=[top1,logistic]')
-
+groups0.add_argument('--dropout',type=float, default=0, metavar='P',
+        help = 'Dropout probability, if model supports dropout (default: 0)')
+groups0.add_argument('--bn',action='store_true', dest='bn',
+        help = "Use batch norm")
+groups0.add_argument('--no-bn',action='store_false', dest='bn',
+       help = "Don't use batch norm")
+groups0.set_defaults(bn=True)
+groups0.add_argument('--last-layer-nonlinear',
+        action='store_true', default=False)
+groups0.add_argument('--bias',action='store_true', dest='bias',
+        help = "Use model biases")
+groups0.add_argument('--no-bias',action='store_false', dest='bias',
+       help = "Don't use biases")
+groups0.set_defaults(bias=False)
+groups0.add_argument('--model-args',type=str,
+        default="{}",metavar='ARGS',
+        help='A dictionary of extra arguments passed to the model.'
+        ' (default: "{}")')
 
 groups2 = parser.add_argument_group('Optional attack arguments')
 groups2.add_argument('--num-images', type=int, default=1000,metavar='N',
@@ -75,15 +93,11 @@ args = parser.parse_args()
 torch.manual_seed(args.seed)
 np.random.seed(args.seed)
 
-i = 0
-while os.path.exists('attack%s'%i):
-    i +=1
-pth = os.path.join('./','attack%s/'%i)
-os.makedirs(pth, exist_ok=True)
-
-args_file_path = os.path.join(pth, 'args.yaml')
-with open(args_file_path, 'w') as f:
-    yaml.dump(vars(args), f, default_flow_style=False)
+# Print args
+print('Contrastive Learning Classification on Cifar-10')
+for p in vars(args).items():
+    print('  ',p[0]+': ',p[1])
+print('\n')
 
 has_cuda = torch.cuda.is_available()
 
@@ -108,7 +122,7 @@ loaderOneByOne = torch.utils.data.DataLoader(
                     num_workers=4, pin_memory=has_cuda)
 
 # get train loader to trian classifier
-ds_train = CIFAR10(root, download=True, train=True, transform=transforms.Compose([transforms.ToTensor()]))
+ds_train = CIFAR10(os.path.join(args.data_dir), download=True, train=True, transform=transforms.Compose([transforms.ToTensor()]))
 if args.num_train_images > 50000:
     args.num_train_images = 50000
 if args.random_subset:
@@ -130,7 +144,7 @@ classes = 10
 model_args = ast.literal_eval(args.model_args)
 in_channels = 3
 model_args.update(bn=args.bn, classes=classes, bias=args.bias,
-                  kernel_size=args.kernel_size,
+                  kernel_size=3,
                   in_channels=in_channels,
                   softmax=False,last_layer_nonlinear=args.last_layer_nonlinear,
                   dropout=args.dropout)
@@ -179,14 +193,14 @@ print('    done.')
 ############################
 
 #change criterion for ImageNet-1k and CIFAR100 to Top5Criterion
-if args.criterion=='cohen':
-    criterion = lambda x, y: CohenCriterion(x,y,model,std=0.05)
-elif args.criterion=='top1':
-    criterion = lambda x, y: Top1Criterion(x,y,model)
-elif args.criterion=='logistic':
-    criterion = lambda x, y: LogRegCriterion(x,y,model,clf,scaler)
-else:
-    raise ValueError('Select a valid predection criterion')
+#if args.criterion=='cohen':
+#    criterion = lambda x, y: CohenCriterion(x,y,model,std=0.05)
+#elif args.criterion=='top1':
+#    criterion = lambda x, y: Top1Criterion(x,y,model)
+#elif args.criterion=='logistic':
+criterion = lambda x, y: LogRegCriterion(x,y,model=model,clf=clf,scaler=scaler)
+#else:
+#    raise ValueError('Select a valid predection criterion')
 
 if args.norm=='L2':
     norm = 2
@@ -209,7 +223,7 @@ params = {'bounds':(0,1),
           'max_inner':args.max_inner,
           'T': args.T}
 
-attack = Attack(model, norm=norm, **params)
+attack = Attack(model=model, clf=clf, scaler=scaler, norm=norm, criterion=criterion, **params)
 
 d0 = torch.full((args.num_images,),np.inf)
 d2 = torch.full((args.num_images,),np.inf)
@@ -255,7 +269,7 @@ for i, (x,y) in enumerate(loaderOneByOne):
     if nclasses == 10:
         break
 
-print(model(ImsList))
+#print(model(ImsList))
 safety = SafetyInitialize(model=model,TrainingIms=ImsList)
 
 for i, (x, y) in enumerate(loader):
@@ -312,6 +326,16 @@ dists = {'index':Ix.cpu().numpy(),
          'l2':d2.cpu().numpy(),
          'linf':dinf.cpu().numpy(),
          'l1': d1.cpu().numpy()}
+
+i = 0
+while os.path.exists('attack%s'%i):
+    i +=1
+pth = os.path.join('./','attack%s/'%i)
+os.makedirs(pth, exist_ok=True)
+
+args_file_path = os.path.join(pth, 'args.yaml')
+with open(args_file_path, 'w') as f:
+    yaml.dump(vars(args), f, default_flow_style=False)
 
 if args.save_images:
     dists['perturbed'] = PerturbedImages.cpu().numpy()

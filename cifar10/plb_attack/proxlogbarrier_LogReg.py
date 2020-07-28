@@ -8,8 +8,7 @@ from torch import nn
 from torch.autograd import grad
 import time
 
-
-from .prox import L0NormProx_Batch, LinfNormProx, L2NormProx_Batch, L1NormProx
+from prox import L0NormProx_Batch, LinfNormProx, L2NormProx_Batch, L1NormProx
 
 def Top1Criterion(x,y,model):
     return model(x).topk(1)[1].view(-1) == y
@@ -51,14 +50,30 @@ def LogRegCriterion(x,y,model,clf,scaler):
 
     return y_pred == y
 
+def get_probs(x,model,clf,scaler):
+    """ Get logit probabilities """
+
+    out, _ = model(x)
+    out = out.cpu().numpy()
+    out = scaler.transform(out)
+    probs = clf.predict_proba(out)
+    probs = torch.FloatTensor(probs)
+    if x.is_cuda:
+        probs = probs.cuda()
+
+    return probs
+
 class Attack():
 
-    def __init__(self,model,criterion=Top1Criterion,norm=0,
+    def __init__(self,model,clf,scaler,criterion,norm=0,
                         verbose=True,**kwargs):
 
         super().__init__()
         self.model = model
-        self.criterion = lambda x,y : criterion(x,y,model)
+        self.clf = clf
+        self.scaler = scaler
+        #self.criterion = lambda x,y : criterion(x,y,model=model)
+        self.criterion = criterion
         self.labels = None
 
         self.norm = norm
@@ -81,6 +96,8 @@ class Attack():
         norm = self.norm
         config = self.hyperparams
         model=self.model
+        clf = self.clf
+        scaler = self.scaler
         criterion=self.criterion
 
         bounds,dt,alpha0,beta,gamma,max_outer,max_inner,T = (
@@ -124,7 +141,7 @@ class Attack():
             update= diff>0
 
             for j in range(max_inner):
-                p = model(xpert)
+                p = get_probs(x,model,clf,scaler)
                 pdiff = p.max(dim=-1)[0] - p[ix,y]
                 s = -torch.log(pdiff).sum()
                 g = grad(alpha*s,xpert)[0]

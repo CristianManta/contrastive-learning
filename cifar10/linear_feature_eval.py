@@ -110,8 +110,8 @@ test_loader = torch.utils.data.DataLoader(
                     num_workers=4, pin_memory=True)
 
 ds_train = CIFAR10(root, download=True, train=True, transform=transforms.Compose([transforms.ToTensor()]))
-if args.num_test_images > 50000:
-    args.num_test_images = 50000
+if args.num_train_images > 50000:
+    args.num_train_images = 50000
 if args.random_subset:
     Ix = np.random.choice(50000, size=args.num_train_images, replace=False)
     Ix = torch.from_numpy(Ix)
