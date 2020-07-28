@@ -37,8 +37,8 @@ parser.add_argument('--batch-size', type=int, default=128, metavar='N',
         help='Input batch size for training. (default: 128)')
 parser.add_argument('--test-batch-size', type=int, default=100, metavar='N',
         help='input batch size for testing (default: 1000)')
-parser.add_argument('--num-train-images', type=int, default=10000, metavar='NI',
-        help='number of test images to classify (default=10000)')
+parser.add_argument('--num-train-images', type=int, default=50000, metavar='NI',
+        help='number of images to use in training (default=50000)')
 parser.add_argument('--num-test-images', type=int, default=10000, metavar='NI',
         help='number of test images to classify (default=10000)')
 parser.add_argument('--random-subset', action='store_true',
@@ -68,7 +68,7 @@ group1.add_argument('--model-args',type=str,
         help='A dictionary of extra arguments passed to the model.'
         ' (default: "{}")')
 
-parser.add_argument('--lr', type=float, default=0.001)
+parser.add_argument('--lr', type=float, default=0.01)
 parser.add_argument('--epochs', type=int, default=100)
 
 args = parser.parse_args()
