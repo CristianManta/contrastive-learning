@@ -13,7 +13,7 @@ def kl_div_loss(output, labels):
     loss = -torch.log(output[Ix,labels])
     return loss
 
-def pgd_attack(model, images, labels, loss_fn="kl_div", criterion="top1", norm="L2", eps=0.5, alpha=0.1, iters=20):
+def pgd_attack(model, clf, images, labels, loss_fn="kl_div", criterion="top1", norm="L2", eps=0.5, alpha=0.1, iters=20):
     """ BATCH-WISE PGD
         model -> the pytorch model
         images -> a batch of images
@@ -49,7 +49,8 @@ def pgd_attack(model, images, labels, loss_fn="kl_div", criterion="top1", norm="
         input = init_images + delta
 
         # see which images are still correctly classified
-        output = model(input)
+        features, _ = model(input)
+        output = clf(features)
         if criterion=="top1":
             pred_labels = top1(output)
         ## TODO: add other classification criteria
@@ -90,11 +91,12 @@ def pgd_attack(model, images, labels, loss_fn="kl_div", criterion="top1", norm="
         #delta.detach_()
 
     # if unable to attack after max_iters, put adversarial distance to zero
-    output = model(init_images + delta)
+    features, _ = model(init_images + delta)
+    output = clf(features)
     if criterion=="top1":
         pred_labels = top1(output)
     corr = pred_labels == labels
-    delta[corr] = torch.zeros(corr.sum(), *sh[1:])
+    delta[corr] = torch.zeros(corr.sum(), *sh[1:]).cuda()
 
     # return the adversarial perturbation
     return delta

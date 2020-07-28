@@ -13,22 +13,25 @@ from torch.utils.data import Subset
 sys.path.append('../')
 
 from InitMethods import GaussianInitialize, UniformInitialize, SafetyInitialize
-from proxlogbarrier_LogReg import Attack, LogRegCriterion
+from proxlogbarrier_Top1 import Attack, LogRegCriterion
 
 import ContrastiveTeamO.cifar10.models.cifar as cifarmodels
+from ContrastiveTeamO.cifar10.models.LRclassifier import LogisticRegression as LRmodel
 
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn import preprocessing
-import importlib.util
+#from sklearn.neighbors import KNeighborsClassifier
+#from sklearn.linear_model import LogisticRegression
+#from sklearn import preprocessing
+#import importlib.util
 
 parser = argparse.ArgumentParser('Attack an example CIFAR-10 encoder model with the ProxLogBarrier attack.'
                                   'Writes adversarial distances (and optionally images) to a npz file.')
 
 groups0 = parser.add_argument_group('Required arguments')
-groups0.add_argument('--data-dir', type=str, default='/home/campus/oberman-lab',
+groups0.add_argument('--data-dir', type=str, default='/home/campus/oberman-lab/data',
         help='Directory where CIFAR10 data is saved')
 groups0.add_argument('--model-path', type=str,default='/home/campus/ryan.campbell2/ContrastiveTeamO/cifar10/runs/encoder_best.pth.tar',
+        metavar='DIR', help='Directory where model is saved')
+groups0.add_argument('--clf-path', type=str,default='/home/campus/ryan.campbell2/ContrastiveTeamO/cifar10/runs/classifier_best.pth.tar',
         metavar='DIR', help='Directory where model is saved')
 groups0.add_argument('--parallel', action='store_true', dest='parallel',
         help='only allow exact matches to model keys during loading')
@@ -58,8 +61,8 @@ groups0.add_argument('--model-args',type=str,
 groups2 = parser.add_argument_group('Optional attack arguments')
 groups2.add_argument('--num-images', type=int, default=1000,metavar='N',
         help='total number of images to attack (default: 1000)')
-groups2.add_argument('--num-train-images', type=int, default=5000,metavar='N',
-        help='total number of images to train the Logistic Regression classifier (default: 5000)')
+#groups2.add_argument('--num-train-images', type=int, default=5000,metavar='N',
+#        help='total number of images to train the Logistic Regression classifier (default: 5000)')
 groups2.add_argument('--batch-size', type=int, default=100,metavar='N',
         help='number of images to attack at a time (default: 100) ')
 groups2.add_argument('--save-images', action='store_true', default=False,
@@ -121,25 +124,9 @@ loaderOneByOne = torch.utils.data.DataLoader(
                     subset, batch_size=1,shuffle=False,
                     num_workers=4, pin_memory=has_cuda)
 
-# get train loader to trian classifier
-ds_train = CIFAR10(os.path.join(args.data_dir), download=True, train=True, transform=transforms.Compose([transforms.ToTensor()]))
-if args.num_train_images > 50000:
-    args.num_train_images = 50000
-if args.random_subset:
-    Ix = np.random.choice(50000, size=args.num_train_images, replace=False)
-    Ix = torch.from_numpy(Ix)
-else:
-    Ix = torch.arange(args.num_train_images) # Use the first N images of test set
-subset = Subset(ds_train, Ix)
-num_train = args.num_train_images
-train_loader = torch.utils.data.DataLoader(
-                    subset,
-                    batch_size=args.batch_size, shuffle=True,
-                    num_workers=4, pin_memory=True)
-
 ############################
 
-# Retrieve pre trained Contrastive loss model and train the logistic regression classifier
+# Retrieve pre trained Contrastive loss model and the logistic regression classifier
 classes = 10
 model_args = ast.literal_eval(args.model_args)
 in_channels = 3
@@ -159,36 +146,23 @@ model.eval()
 for p in model.parameters():
     p.requires_grad_(False)
 
-print("training logistic regression classifier...")
-for i, (x,_) in enumerate(train_loader):
+for i, (x,_) in enumerate(loader):
     if has_cuda:
         x = x.cuda()
     out = model(x)[0]
     break
-out_dim = out.shape[1]
+num_features = out.shape[1]
 
-train_features = torch.zeros(num_train,out_dim)
-y_train = torch.zeros(num_train)
-K = 0
-for i, (x,y) in enumerate(train_loader):
-    if has_cuda:
-        x = x.cuda()
-    Nb = x.shape[0]
-    out = model(x)[0]
-    train_features[K:(K+Nb)] = out.cpu()
-    y_train[K:(K+Nb)] = y
-    K += Nb
-
-train_features, y_train = train_features.cpu().numpy(), y_train.cpu().numpy()
-
-scaler = preprocessing.StandardScaler()
-scaler.fit(train_features)
-clf = LogisticRegression(random_state=0, max_iter=1200, solver='lbfgs', C=1.0)
-clf.fit(scaler.transform(train_features), y_train)
-
-del train_features, y_train
-
-print('    done.')
+clf = LRmodel(input_dim=num_features, output_dim=classes)
+if has_cuda:
+    clf = clf.cuda()
+    if torch.cuda.device_count()>1:
+        clf = nn.DataParallel(clf)
+savedict = torch.load(args.clf_path, map_location='cpu')
+clf.load_state_dict(savedict['state_dict'])
+clf.eval()
+for p in clf.parameters():
+    p.requires_grad_(False)
 
 ############################
 
@@ -198,7 +172,7 @@ print('    done.')
 #elif args.criterion=='top1':
 #    criterion = lambda x, y: Top1Criterion(x,y,model)
 #elif args.criterion=='logistic':
-criterion = lambda x, y: LogRegCriterion(x,y,model=model,clf=clf,scaler=scaler)
+criterion = lambda x, y: LogRegCriterion(x,y,model=model,clf=clf)
 #else:
 #    raise ValueError('Select a valid predection criterion')
 
@@ -223,7 +197,7 @@ params = {'bounds':(0,1),
           'max_inner':args.max_inner,
           'T': args.T}
 
-attack = Attack(model=model, clf=clf, scaler=scaler, norm=norm, criterion=criterion, **params)
+attack = Attack(model=model, clf=clf, norm=norm, criterion=criterion, **params)
 
 d0 = torch.full((args.num_images,),np.inf)
 d2 = torch.full((args.num_images,),np.inf)
@@ -279,7 +253,7 @@ for i, (x, y) in enumerate(loader):
     if has_cuda:
         x, y = x.cuda(), y.cuda()
 
-    xstart = init_attack(x,y,criterion)
+    xstart = init_attack(x,y,criterion,max_iters=5000)
     xstartNew = safety(xstart,x,y)
 
     xpert = attack(x,xstartNew,y)

@@ -2,9 +2,11 @@
 
 import argparse, yaml
 import os, sys
+import ast
 
 import numpy as np
 import torch
+from torch import nn
 
 from torchvision.datasets import CIFAR10
 import torchvision.transforms as transforms
@@ -15,15 +17,37 @@ import torchvision.transforms as transforms
 
 from attack_utils import pgd_attack
 
-from ContrastiveTeamO.cifar10.models.cifar import ResNet18
+import ContrastiveTeamO.cifar10.models.cifar as cifarmodels
+from ContrastiveTeamO.cifar10.models.LRclassifier import LogisticRegression as LRmodel
 
 # define the arguments
 parser = argparse.ArgumentParser('Attack an example CIFAR10 example with L2PGD')
 
 parser.add_argument('--data-dir', type=str, default='/home/campus/oberman-lab/data/',
         metavar='DIR', help='Directory where ImageNet data is saved')
-parser.add_argument('--model-path', type=str, default='/home/campus/ryan.campbell2/ContrastiveTeamO/cifar10/trained_models/baseline/best.pth.tar', metavar='PATH',
+parser.add_argument('--model-path', type=str, default='/home/campus/ryan.campbell2/ContrastiveTeamO/cifar10/runs/encoder_best.pth.tar', metavar='PATH',
         help='path to the .pth.tar trained model file')
+parser.add_argument('--clf-path', type=str, default='/home/campus/ryan.campbell2/ContrastiveTeamO/cifar10/runs/classifier_best.pth.tar', metavar='PATH',
+        help='path to the .pth.tar trained classifier file')
+
+parser.add_argument('--dropout',type=float, default=0, metavar='P',
+        help = 'Dropout probability, if model supports dropout (default: 0)')
+parser.add_argument('--bn',action='store_true', dest='bn',
+        help = "Use batch norm")
+parser.add_argument('--no-bn',action='store_false', dest='bn',
+        help = "Don't use batch norm")
+parser.set_defaults(bn=True)
+parser.add_argument('--last-layer-nonlinear',
+        action='store_true', default=False)
+parser.add_argument('--bias',action='store_true', dest='bias',
+        help = "Use model biases")
+parser.add_argument('--no-bias',action='store_false', dest='bias',
+        help = "Don't use biases")
+parser.set_defaults(bias=False)
+parser.add_argument('--model-args',type=str,
+        default="{}",metavar='ARGS',
+        help='A dictionary of extra arguments passed to the model.'
+        ' (default: "{}")')
 
 parser.add_argument('--criterion', type=str, default='top1',
         help='given a model and x, how to we estimate y?')
@@ -76,16 +100,42 @@ loader = torch.utils.data.DataLoader(
                     num_workers=4, pin_memory=has_cuda)
 
 # retrieve pretrained model
-model = ResNet18()
-savedict = torch.load(args.model_path,map_location='cpu')
-model.load_state_dict(savedict['state_dict'])
-model.eval()
-for p in model.parameters():
-    p.requires_grad_(False)
+classes = 10
+model_args = ast.literal_eval(args.model_args)
+in_channels = 3
+model_args.update(bn=args.bn, classes=classes, bias=args.bias,
+                  kernel_size=3,
+                  in_channels=in_channels,
+                  softmax=False,last_layer_nonlinear=args.last_layer_nonlinear,
+                  dropout=args.dropout)
+model = getattr(cifarmodels, 'ResNet50')(**model_args)
 if has_cuda:
     model = model.cuda()
     if torch.cuda.device_count()>1:
         model = nn.DataParallel(model)
+savedict = torch.load(args.model_path, map_location='cpu')
+model.load_state_dict(savedict['state_dict'])
+model.eval()
+for p in model.parameters():
+    p.requires_grad_(False)
+
+for i, (x,_) in enumerate(loader):
+    if has_cuda:
+        x = x.cuda()
+    out = model(x)[0]
+    break
+num_features = out.shape[1]
+
+clf = LRmodel(input_dim=num_features, output_dim=classes)
+if has_cuda:
+    clf = clf.cuda()
+    if torch.cuda.device_count()>1:
+        clf = nn.DataParallel(clf)
+savedict = torch.load(args.clf_path, map_location='cpu')
+clf.load_state_dict(savedict['state_dict'])
+clf.eval()
+for p in clf.parameters():
+    p.requires_grad_(False)
 
 # Now run the attack!
 d0 = torch.full((args.num_images,),np.inf)
@@ -105,8 +155,12 @@ for i, (x, y) in enumerate(loader):
 
     Nb = x.shape[0]
 
+    if has_cuda:
+        x = x.cuda()
+        y = y.cuda()
+
     # perform the attack on the batch "x"
-    diff = pgd_attack(model, x, y)
+    diff = pgd_attack(model, clf, x, y, eps=args.eps, iters=args.iters, alpha=args.alpha)
 
     l0 = diff.view(Nb, -1).norm(p=0, dim=-1)
     l2 = diff.view(Nb, -1).norm(p=2, dim=-1)

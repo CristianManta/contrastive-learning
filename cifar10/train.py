@@ -211,6 +211,8 @@ def train(epoch):
 
 def test():
 
+    model.eval()
+
     loss_vals = []
 
     with torch.no_grad():

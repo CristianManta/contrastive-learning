@@ -31,47 +31,37 @@ def CohenCriterion(x,y,model,std,num_samples=100):
 
     return final_preds == y
 
-def LogRegCriterion(x,y,model,clf,scaler):
+def LogRegCriterion(x,y,model,clf):
     """ The Logistic Regression Classification criterion
 
         x -> images (torch float tensor)
         y -> true labels (torch Long tensor)
         model -> pytorch model that maps images to feature vectors
-        clf -> the trained logistic regression classifier that maps features to classes 
-        scaler -> used for normalizing the features (I think) """
+        clf -> the trained logistic regression classifier that maps features to classes  """
 
-    out, _ = model(x)
-    out = out.cpu().numpy()
-    out = scaler.transform(out)  # normalization
-    y_pred = clf.predict(out)
-    y_pred = torch.LongTensor(y_pred)
-    if x.is_cuda:
-        y_pred = y_pred.cuda()
+    features, _ = model(x)
+    out = clf(features)
+    y_pred = out.argmax(dim=-1)
 
     return y_pred == y
 
-def get_probs(x,model,clf,scaler):
+def get_probs(x,model,clf):
     """ Get logit probabilities """
 
-    out, _ = model(x)
-    out = out.cpu().numpy()
-    out = scaler.transform(out)
-    probs = clf.predict_proba(out)
-    probs = torch.FloatTensor(probs)
-    if x.is_cuda:
-        probs = probs.cuda()
+    features, _ = model(x)
+    output = clf(features)
+    probs = output.softmax(dim=-1)
 
     return probs
 
 class Attack():
 
-    def __init__(self,model,clf,scaler,criterion,norm=0,
+    def __init__(self,model,clf,criterion,norm=0,
                         verbose=True,**kwargs):
 
         super().__init__()
         self.model = model
         self.clf = clf
-        self.scaler = scaler
         #self.criterion = lambda x,y : criterion(x,y,model=model)
         self.criterion = criterion
         self.labels = None
@@ -97,7 +87,6 @@ class Attack():
         config = self.hyperparams
         model=self.model
         clf = self.clf
-        scaler = self.scaler
         criterion=self.criterion
 
         bounds,dt,alpha0,beta,gamma,max_outer,max_inner,T = (
@@ -141,7 +130,7 @@ class Attack():
             update= diff>0
 
             for j in range(max_inner):
-                p = get_probs(x,model,clf,scaler)
+                p = get_probs(xpert,model,clf)
                 pdiff = p.max(dim=-1)[0] - p[ix,y]
                 s = -torch.log(pdiff).sum()
                 g = grad(alpha*s,xpert)[0]

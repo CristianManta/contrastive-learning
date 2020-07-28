@@ -100,6 +100,7 @@ class GaussianInitialize():
         k=0
         while correct.sum()>0:
             l = correct.sum()
+            #print(k, l.item())
             xpert[correct] = x[correct] + (1.01)**k*dt*torch.randn(l,*xpert.shape[1:],
                                                         device=xpert.device).cuda()
             xpert.clamp_(*bounds)
