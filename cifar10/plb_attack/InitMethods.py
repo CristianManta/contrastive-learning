@@ -95,7 +95,7 @@ class GaussianInitialize():
             x = x.unsqueeze(0)
         xpert = x.clone()
         #dt = 5e-4 #; originally 0.01
-        dt = 0.01
+        dt = 0.1
         correct = criterion(xpert,y)
         k=0
         while correct.sum()>0:
