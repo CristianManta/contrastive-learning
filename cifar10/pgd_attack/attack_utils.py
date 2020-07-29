@@ -13,7 +13,14 @@ def kl_div_loss(output, labels):
     loss = -torch.log(output[Ix,labels])
     return loss
 
-def pgd_attack(model, clf, images, labels, loss_fn="kl_div", criterion="top1", norm="L2", eps=0.5, alpha=0.1, iters=20):
+def cw_loss(output, y):
+    Ix = torch.arange(output.shape[0],device=output.device)
+    p = output.softmax(dim=-1)
+    pc = p.clone()
+    pc[Ix,y] = 0.0
+    return (p[Ix,y] - pc.max(dim=-1)[0]).clamp(min=0.0)
+
+def pgd_attack(model, clf, images, labels, loss_fn, criterion="top1", norm="L2", eps=0.5, alpha=0.1, iters=20):
     """ BATCH-WISE PGD
         model -> the pytorch model
         images -> a batch of images
@@ -57,14 +64,16 @@ def pgd_attack(model, clf, images, labels, loss_fn="kl_div", criterion="top1", n
         corr = pred_labels == labels
 
         # exit attack if all images are misclassified
+        #print(corr.sum().item())
         if corr.sum() == 0:
             delta.detach_()
             break
 
         # perform PGD step on images that are not yet attacked
         model.zero_grad()
-        if loss_fn=="kl_div":
-            loss = kl_div_loss(output, labels)
+        loss = loss_fn(output, labels)
+        #print(loss)
+        #exit()
         ## TODO: add other loss functions (similarity)
 
         if norm=="L2":

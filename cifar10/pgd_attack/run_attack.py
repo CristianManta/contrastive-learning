@@ -22,7 +22,7 @@ from torch.utils.data import SubsetRandomSampler
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 
-from attack_utils import pgd_attack
+from attack_utils import pgd_attack, kl_div_loss, cw_loss
 
 import cifar10.models.cifar as cifarmodels
 from cifar10.models.LRclassifier import LogisticRegression as LRmodel
@@ -58,8 +58,8 @@ parser.add_argument('--model-args',type=str,
 
 parser.add_argument('--criterion', type=str, default='top1',
         help='given a model and x, how to we estimate y?')
-parser.add_argument('--loss-function', type=str, default='kl_div',
-        help='the loss function we will use in PGD')
+parser.add_argument('--loss-function', type=str, default='KL',
+        help='the loss function we will use in PGD (Choices = [KL,CW])')
 
 parser.add_argument('--num-images', type=int, default=1000,metavar='N',
         help='total number of images to attack (default: 1000)')
@@ -144,6 +144,14 @@ clf.eval()
 for p in clf.parameters():
     p.requires_grad_(False)
 
+# define loss function
+if args.loss_function == 'KL':
+    loss_fn = kl_div_loss
+elif args.loss_function == 'CW':
+    loss_fn = cw_loss
+else:
+    raise ValueError("select a loss function")
+
 # Now run the attack!
 d0 = torch.full((args.num_images,),np.inf)
 d2 = torch.full((args.num_images,),np.inf)
@@ -167,7 +175,7 @@ for i, (x, y) in enumerate(loader):
         y = y.cuda()
 
     # perform the attack on the batch "x"
-    diff = pgd_attack(model, clf, x, y, eps=args.eps, iters=args.iters, alpha=args.alpha)
+    diff = pgd_attack(model, clf, x, y, loss_fn=loss_fn, eps=args.eps, iters=args.iters, alpha=args.alpha)
 
     l0 = diff.view(Nb, -1).norm(p=0, dim=-1)
     l2 = diff.view(Nb, -1).norm(p=2, dim=-1)

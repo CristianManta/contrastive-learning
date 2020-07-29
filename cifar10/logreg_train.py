@@ -220,8 +220,8 @@ def test():
     model.eval()
     clf.eval()
 
-    loss_vals = []
-    acc_vals = []
+    test_loss = tnt.meter.AverageValueMeter()
+    top1 = tnt.meter.ClassErrorMeter()
 
     with torch.no_grad():
         for batch_ix, (x, y) in enumerate(test_loader):
@@ -234,13 +234,12 @@ def test():
             output = clf(features)
 
             loss = loss_fn(output,y)
-            top1_acc = (output.argmax(dim=-1).view(-1) == y).float().sum().div(float(Nb))
 
-            loss_vals.append(loss.data.item())
-            acc_vals.append(top1_acc.item())
+            top1.add(output, y)
+            test_loss.add(loss.item())
 
-    loss_val = mean(loss_vals)
-    acc_val = mean(acc_vals)
+    loss_val = test_loss.value()[0]
+    acc_val = top1.value()[0]
 
     print('        test loss: %.3g' % (loss_val))
     print('        test acc : %.3f' % (acc_val))
