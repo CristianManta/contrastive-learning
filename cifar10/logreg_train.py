@@ -1,5 +1,14 @@
 import argparse
-import os, shutil, sys
+import os, shutil, sys, pathlib
+
+_pth = str(pathlib.Path(__file__).absolute())
+for i in range(2):
+    (_pth, _) = os.path.split(_pth)
+sys.path.insert(0, _pth)  # I just made sure that the root of the project (ContrastiveTeamO) is in the path where Python
+# looks for packages in order to import from files that require going several levels up from the directory where this
+# script is. Unfortunately, by default Python doesn't allow imports from above the current file directory.
+
+
 import yaml
 import numpy as np
 import random
@@ -24,12 +33,12 @@ from torch.utils.data import SubsetRandomSampler
 from torch.utils.data import DataLoader
 
 import models.cifar as cifarmodels
-from ContrastiveTeamO.loss.nt_xent import NTXentLoss
+from loss.nt_xent import NTXentLoss
 
-from ContrastiveTeamO.custom_transforms import get_color_distortion, GaussianBlur
+from custom_transforms import get_color_distortion, GaussianBlur
 
 parser = argparse.ArgumentParser('Use logistic regression to classify a contrastive learning model')
-parser.add_argument('--data-dir', type=str, default='/home/campus/oberman-lab/data/',metavar='DIR',
+parser.add_argument('--data-dir', type=str, default='/home/math/oberman-lab/data/',metavar='DIR',
         help='Directory where CIFAR-10 data is saved')
 parser.add_argument('--seed', type=int, default=0, metavar='S',
         help='random seed (default: 0)')
@@ -160,7 +169,7 @@ class LogisticRegression(torch.nn.Module):
     def forward(self, x):
         outputs = self.linear(x)
         if self.use_softmax:
-            output = output.softmax(dim=-1)
+            output = output.softmax(dim=-1)  # TODO: Possible typo?
         return outputs
 
 clf = LogisticRegression(input_dim=num_features, output_dim=classes)

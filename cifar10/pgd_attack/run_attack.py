@@ -1,8 +1,15 @@
 """ Attack a ResNet18 model with PGD on CIFAR10 """
 
 import argparse, yaml
-import os, sys
+import os, sys, pathlib
 import ast
+_pth = str(pathlib.Path(__file__).absolute())
+for i in range(3):
+    (_pth, _) = os.path.split(_pth)
+sys.path.insert(0, _pth)  # I just made sure that the root of the project (ContrastiveTeamO) is in the path where Python
+# looks for packages in order to import from files that require going several levels up from the directory where this
+# script is. Unfortunately, by default Python doesn't allow imports from above the current file directory.
+
 
 import numpy as np
 import torch
@@ -17,17 +24,17 @@ import torchvision.transforms as transforms
 
 from attack_utils import pgd_attack
 
-import ContrastiveTeamO.cifar10.models.cifar as cifarmodels
-from ContrastiveTeamO.cifar10.models.LRclassifier import LogisticRegression as LRmodel
+import cifar10.models.cifar as cifarmodels
+from cifar10.models.LRclassifier import LogisticRegression as LRmodel
 
 # define the arguments
 parser = argparse.ArgumentParser('Attack an example CIFAR10 example with L2PGD')
 
-parser.add_argument('--data-dir', type=str, default='/home/campus/oberman-lab/data/',
+parser.add_argument('--data-dir', type=str, default='/home/math/oberman-lab/data/',
         metavar='DIR', help='Directory where ImageNet data is saved')
-parser.add_argument('--model-path', type=str, default='/home/campus/ryan.campbell2/ContrastiveTeamO/cifar10/runs/encoder_best.pth.tar', metavar='PATH',
+parser.add_argument('--model-path', type=str, default='/home/math/ryan.campbell2/ContrastiveTeamO/cifar10/runs/encoder_best.pth.tar', metavar='PATH',
         help='path to the .pth.tar trained model file')
-parser.add_argument('--clf-path', type=str, default='/home/campus/ryan.campbell2/ContrastiveTeamO/cifar10/runs/classifier_best.pth.tar', metavar='PATH',
+parser.add_argument('--clf-path', type=str, default='/home/math/ryan.campbell2/ContrastiveTeamO/cifar10/runs/classifier_best.pth.tar', metavar='PATH',
         help='path to the .pth.tar trained classifier file')
 
 parser.add_argument('--dropout',type=float, default=0, metavar='P',

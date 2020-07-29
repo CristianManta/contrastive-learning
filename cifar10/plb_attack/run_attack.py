@@ -1,5 +1,14 @@
 import argparse, yaml
-import os, sys
+import os, sys, pathlib
+
+_pth = str(pathlib.Path(__file__).absolute())
+for i in range(3):
+    (_pth, _) = os.path.split(_pth)
+sys.path.insert(0, _pth)  # I just made sure that the root of the project (ContrastiveTeamO) is in the path where Python
+# looks for packages in order to import from files that require going several levels up from the directory where this
+# script is. Unfortunately, by default Python doesn't allow imports from above the current file directory.
+
+
 import ast, bisect
 
 import numpy as np
@@ -10,13 +19,13 @@ from torchvision.datasets import CIFAR10
 import torchvision.transforms as transforms
 from torch.utils.data import Subset
 
-sys.path.append('../')
+# sys.path.append('../')
 
 from InitMethods import GaussianInitialize, UniformInitialize, SafetyInitialize
 from proxlogbarrier_Top1 import Attack, LogRegCriterion
 
-import ContrastiveTeamO.cifar10.models.cifar as cifarmodels
-from ContrastiveTeamO.cifar10.models.LRclassifier import LogisticRegression as LRmodel
+import cifar10.models.cifar as cifarmodels
+from cifar10.models.LRclassifier import LogisticRegression as LRmodel
 
 #from sklearn.neighbors import KNeighborsClassifier
 #from sklearn.linear_model import LogisticRegression
@@ -27,11 +36,11 @@ parser = argparse.ArgumentParser('Attack an example CIFAR-10 encoder model with 
                                   'Writes adversarial distances (and optionally images) to a npz file.')
 
 groups0 = parser.add_argument_group('Required arguments')
-groups0.add_argument('--data-dir', type=str, default='/home/campus/oberman-lab/data',
+groups0.add_argument('--data-dir', type=str, default='/home/math/oberman-lab/data',
         help='Directory where CIFAR10 data is saved')
-groups0.add_argument('--model-path', type=str,default='/home/campus/ryan.campbell2/ContrastiveTeamO/cifar10/runs/encoder_best.pth.tar',
+groups0.add_argument('--model-path', type=str,default='/home/math/ryan.campbell2/ContrastiveTeamO/cifar10/runs/encoder_best.pth.tar',
         metavar='DIR', help='Directory where model is saved')
-groups0.add_argument('--clf-path', type=str,default='/home/campus/ryan.campbell2/ContrastiveTeamO/cifar10/runs/classifier_best.pth.tar',
+groups0.add_argument('--clf-path', type=str,default='/home/math/ryan.campbell2/ContrastiveTeamO/cifar10/runs/classifier_best.pth.tar',
         metavar='DIR', help='Directory where model is saved')
 groups0.add_argument('--parallel', action='store_true', dest='parallel',
         help='only allow exact matches to model keys during loading')
