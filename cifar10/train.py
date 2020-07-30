@@ -15,7 +15,6 @@ import yaml
 import numpy as np
 import random
 import ast, bisect
-import time, datetime
 from statistics import mean
 
 import torch
@@ -38,58 +37,58 @@ from loss.nt_xent import NTXentLoss
 from custom_transforms import get_color_distortion, GaussianBlur
 
 parser = argparse.ArgumentParser('constructive learning training on CIFAR-10')
-parser.add_argument('--data-dir', type=str, default='/home/math/oberman-lab/data/',metavar='DIR',
-        help='Directory where CIFAR-10 data is saved')
+parser.add_argument('--data-dir', type=str, default='/home/math/oberman-lab/data/', metavar='DIR',
+                    help='Directory where CIFAR-10 data is saved')
 parser.add_argument('--seed', type=int, default=0, metavar='S',
-        help='random seed (default: 0)')
+                    help='random seed (default: 0)')
 parser.add_argument('--epochs', type=int, default=100, metavar='N',
-        help='number of epochs to train (default: 100)')
+                    help='number of epochs to train (default: 100)')
 parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
-        help='input batch size for testing (default: 1000)')
-#parser.add_argument('--log-interval', type=int, default=100, metavar='N',
+                    help='input batch size for testing (default: 1000)')
+# parser.add_argument('--log-interval', type=int, default=100, metavar='N',
 #        help='how many batches to wait before logging training status (default: 100)')
-#parser.add_argument('--logdir', type=str, default=None,metavar='DIR',
+# parser.add_argument('--logdir', type=str, default=None,metavar='DIR',
 #        help='directory for outputting log files. (default: ./logs/DATASET/MODEL/TIMESTAMP/)')
 
 group1 = parser.add_argument_group('Model hyperparameters')
 group1.add_argument('--model', type=str, default='ResNet50',
-        help='Model architecture (default: ResNet50)')
-group1.add_argument('--dropout',type=float, default=0, metavar='P',
-        help = 'Dropout probability, if model supports dropout (default: 0)')
-group1.add_argument('--bn',action='store_true', dest='bn',
-        help = "Use batch norm")
-group1.add_argument('--no-bn',action='store_false', dest='bn',
-       help = "Don't use batch norm")
+                    help='Model architecture (default: ResNet50)')
+group1.add_argument('--dropout', type=float, default=0, metavar='P',
+                    help='Dropout probability, if model supports dropout (default: 0)')
+group1.add_argument('--bn', action='store_true', dest='bn',
+                    help="Use batch norm")
+group1.add_argument('--no-bn', action='store_false', dest='bn',
+                    help="Don't use batch norm")
 group1.set_defaults(bn=True)
-group1.add_argument('--last-layer-nonlinear', 
-        action='store_true', default=False)
-group1.add_argument('--bias',action='store_true', dest='bias',
-        help = "Use model biases")
-group1.add_argument('--no-bias',action='store_false', dest='bias',
-       help = "Don't use biases")
+group1.add_argument('--last-layer-nonlinear',
+                    action='store_true', default=False)
+group1.add_argument('--bias', action='store_true', dest='bias',
+                    help="Use model biases")
+group1.add_argument('--no-bias', action='store_false', dest='bias',
+                    help="Don't use biases")
 group1.set_defaults(bias=False)
-group1.add_argument('--kernel-size',type=int, default=3, metavar='K',
-        help='convolution kernel size (default: 3)')
-group1.add_argument('--model-args',type=str, 
-        default="{}",metavar='ARGS',
-        help='A dictionary of extra arguments passed to the model.'
-        ' (default: "{}")')
+group1.add_argument('--kernel-size', type=int, default=3, metavar='K',
+                    help='convolution kernel size (default: 3)')
+group1.add_argument('--model-args', type=str,
+                    default="{}", metavar='ARGS',
+                    help='A dictionary of extra arguments passed to the model.'
+                         ' (default: "{}")')
 
 group0 = parser.add_argument_group('Optimizer hyperparameters')
 group0.add_argument('--batch-size', type=int, default=128, metavar='N',
-        help='Input batch size for training. (default: 128)')
+                    help='Input batch size for training. (default: 128)')
 group0.add_argument('--lr', type=float, default=0.15, metavar='LR',
-        help='Initial step size. (default: 0.15)')
+                    help='Initial step size. (default: 0.15)')
 group0.add_argument('--lr-schedule', type=str, metavar='[[epoch,ratio]]',
-        default='[[0,1],[30,0.2],[60,0.04],[80,0.008]]', help='List of epochs and multiplier '
-        'for changing the learning rate (default: [[0,1],[30,0.2],[60,0.04],[80,0.008]]). ')
+                    default='[[0,1],[30,0.2],[60,0.04],[80,0.008]]', help='List of epochs and multiplier '
+                                                                          'for changing the learning rate (default: [[0,1],[30,0.2],[60,0.04],[80,0.008]]). ')
 group0.add_argument('--momentum', type=float, default=0.9, metavar='M',
-       help='SGD momentum parameter (default: 0.9)')
+                    help='SGD momentum parameter (default: 0.9)')
 
 group2 = parser.add_argument_group('Regularizers')
-group2.add_argument('--decay',type=float, default=5e-4, metavar='L',
-        help='Lagrange multiplier for weight decay (sum '
-        'parameters squared) (default: 5e-4)')
+group2.add_argument('--decay', type=float, default=5e-4, metavar='L',
+                    help='Lagrange multiplier for weight decay (sum '
+                         'parameters squared) (default: 5e-4)')
 
 args = parser.parse_args()
 
@@ -104,18 +103,19 @@ np.random.seed(args.seed)
 # Print args
 print('Contrastive Learning on Cifar-10')
 for p in vars(args).items():
-    print('  ',p[0]+': ',p[1])
+    print('  ', p[0] + ': ', p[1])
 print('\n')
 
 # Set and create logging directory
-#if args.logdir is None:
+# if args.logdir is None:
 #    args.logdir = os.path.join('./logs/',args.dataset,args.model,
 #            '{0:%Y-%m-%dT%H%M%S}'.format(datetime.datetime.now()))
-#os.makedirs(args.logdir, exist_ok=True)
+# os.makedirs(args.logdir, exist_ok=True)
 
 # Get Train and Test Loaders
 # Do 3 deparate train loaders, one with each data augmentation
-root = os.path.join(args.data_dir,'cifar10')
+root = os.path.join(args.data_dir, 'cifar10')
+
 
 class SimCLRDataTransform(object):
     def __init__(self, transform):
@@ -125,6 +125,7 @@ class SimCLRDataTransform(object):
         xi = self.transform(sample)
         xj = self.transform(sample)
         return xi, xj
+
 
 color_jitter = transforms.ColorJitter(0.8, 0.8, 0.8, 0.2)
 data_transforms = transforms.Compose([transforms.RandomResizedCrop(size=32),
@@ -157,18 +158,18 @@ classes = 10
 model_args = ast.literal_eval(args.model_args)
 in_channels = 3
 model_args.update(bn=args.bn, classes=classes, bias=args.bias,
-                  kernel_size=args.kernel_size, 
+                  kernel_size=args.kernel_size,
                   in_channels=in_channels,
-                  softmax=False,last_layer_nonlinear=args.last_layer_nonlinear,
+                  softmax=False, last_layer_nonlinear=args.last_layer_nonlinear,
                   dropout=args.dropout)
 model = getattr(cifarmodels, args.model)(**model_args)
 
 if has_cuda:
     model = model.cuda()
-    if torch.cuda.device_count()>1:
+    if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
 
-#print(model)
+# print(model)
 
 # Set Optimizer and learning rate schedule
 optimizer = torch.optim.Adam(model.parameters(), args.lr, weight_decay=10e-6)
@@ -176,7 +177,9 @@ scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=len(trai
                                                        last_epoch=-1)
 
 # define loss
-nt_xent_criterion = NTXentLoss(device=torch.cuda.current_device(), batch_size=128, temperature=0.5, use_cosine_similarity=True)
+nt_xent_criterion = NTXentLoss(device=torch.cuda.current_device(), batch_size=128, temperature=0.5,
+                               use_cosine_similarity=True)
+
 
 # training code
 
@@ -210,7 +213,7 @@ def train(epoch):
 
         if batch_ix % 100 == 0:
             print('[Epoch %2d, batch %3d] training loss: %.3g' %
-                (epoch, batch_ix, loss.data.item()))
+                  (epoch, batch_ix, loss.data.item()))
 
         batch_ix += 1
 
@@ -218,8 +221,8 @@ def train(epoch):
     if epoch >= 10:
         scheduler.step()
 
-def test():
 
+def test():
     model.eval()
 
     loss_vals = []
@@ -245,19 +248,20 @@ def test():
 
     return loss_val
 
-def main():
 
+def main():
     best_loss = 10000.0
 
     for epoch in range(1, args.epochs + 1):
         train(epoch)
         test_loss = test()
 
-        torch.save({'state_dict':model.state_dict()}, './runs/encoder_checkpoint.pth.tar')
+        torch.save({'state_dict': model.state_dict()}, './runs/encoder_checkpoint.pth.tar')
 
         if test_loss < best_loss:
             shutil.copyfile('./runs/encoder_checkpoint.pth.tar', './runs/encoder_best.pth.tar')
             best_loss = test_loss
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     main()

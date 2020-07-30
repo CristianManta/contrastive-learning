@@ -13,7 +13,6 @@ import yaml
 import numpy as np
 import random
 import ast, bisect
-import time, datetime
 from statistics import mean
 
 import torch
@@ -170,7 +169,7 @@ class LogisticRegression(torch.nn.Module):
     def forward(self, x):
         outputs = self.linear(x)
         if self.use_softmax:
-            output = output.softmax(dim=-1)  # TODO: Possible typo?
+            outputs = outputs.softmax(dim=-1)
         return outputs
 
 
@@ -199,7 +198,7 @@ def train(epoch):
         optimizer.zero_grad()
 
         features, _ = model(x)
-        features = F.normalize(features, dim=-1)  # Added this to try to improve accuracy
+        features = F.normalize(features, dim=1)  # Added this to try to improve accuracy
 
         features = features.detach()
         features.requires_grad = True
@@ -224,7 +223,14 @@ def test():
     clf.eval()
 
     test_loss = tnt.meter.AverageValueMeter()
-    top1 = tnt.meter.ClassErrorMeter(accuracy=True)
+
+    # top1 = tnt.meter.ClassErrorMeter(accuracy=True)
+
+    # Note: I replaced the top1 meter by a manual computation of the test accuracy after a series of
+    # inconsistent outputs by tnt.meter combined with poor documentation on its parameters
+
+    correct = 0
+    total = 0
 
     with torch.no_grad():
         for batch_ix, (x, y) in enumerate(test_loader):
@@ -234,19 +240,24 @@ def test():
             Nb = x.shape[0]
 
             features, _ = model(x)
-            features = F.normalize(features, dim=-1)  # Added this to try to improve accuracy
+            features = F.normalize(features, dim=1)  # Added this to try to improve accuracy
             output = clf(features)
+
+            predicted = torch.argmax(output, dim=1)
+            total += Nb
+            correct += (predicted == y).sum().item()
 
             loss = loss_fn(output, y)
 
-            top1.add(output, y)
+            # top1.add(output, y)
             test_loss.add(loss.item())
 
     loss_val = test_loss.value()[0]
-    acc_val = top1.value()[0]
+    # acc_val = top1.value()[0]
+    acc_val = 100 * correct / total
 
-    print('        test loss: %.3g' % (loss_val))
-    print('        test acc : %.3f' % (acc_val))
+    print('        test loss: %.3g' % loss_val)
+    print('        test acc : %.3f' % acc_val)
 
     return loss_val, acc_val
 
