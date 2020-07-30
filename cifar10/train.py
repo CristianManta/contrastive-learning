@@ -173,8 +173,9 @@ if has_cuda:
 
 # Set Optimizer and learning rate schedule
 optimizer = torch.optim.Adam(model.parameters(), args.lr, weight_decay=10e-6)
-scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=len(train_loader), eta_min=0,
-                                                       last_epoch=-1)
+# scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=len(train_loader), eta_min=0,
+#                                                        last_epoch=-1)
+scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 20, gamma=0.1, last_epoch=-1)
 
 # define loss
 nt_xent_criterion = NTXentLoss(device=torch.cuda.current_device(), batch_size=128, temperature=0.5,
