@@ -174,12 +174,12 @@ data_augment = data_transforms
 train_loader = torch.utils.data.DataLoader(
     dataset=datasets.ImageFolder(traindir, transform=SimCLRDataTransform(data_augment)),
     batch_size=args.batch_size, shuffle=False,
-    num_workers=4, pin_memory=True)
+    num_workers=8, pin_memory=True)
 
 valid_loader = torch.utils.data.DataLoader(
     dataset=datasets.ImageFolder(valdir, transform=SimCLRDataTransform(data_augment)),
     batch_size=args.test_batch_size, shuffle=False,
-    num_workers=4, pin_memory=True)
+    num_workers=8, pin_memory=True)
 
 
 # test_loader = torch.utils.data.DataLoader(
@@ -203,9 +203,10 @@ model_args.update(bn=args.bn, classes=classes, bias=args.bias,
 model = getattr(cifarmodels, args.model)(**model_args)
 
 if has_cuda:
-    model = model.cuda()
-    if torch.cuda.device_count() > 1:
-        model = nn.DataParallel(model)
+    # if torch.cuda.device_count() > 1:
+    model = nn.DataParallel(model.cuda()).cuda()
+    # else:
+    #     model = model.cuda()
 
 # print(model)
 
