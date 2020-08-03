@@ -1,4 +1,4 @@
-""" training a constructive learning model on CIFAR-10.
+""" training a constructive learning model on ImageNet.
  Optimizer-related arguments not used yet as parameters:
  --> lr-schedule
  --> momentum"""
@@ -30,7 +30,7 @@ import torchnet as tnt
 
 import torchvision
 import torchvision.transforms as transforms
-from torchvision.datasets import CIFAR10
+import torchvision.datasets as datasets
 from torch.utils.data.sampler import SubsetRandomSampler
 from torch.utils.data import DataLoader
 
@@ -39,9 +39,9 @@ from loss.nt_xent import NTXentLoss
 
 from custom_transforms import get_color_distortion, GaussianBlur
 
-parser = argparse.ArgumentParser('constructive learning training on CIFAR-10')
-parser.add_argument('--data-dir', type=str, default='/home/math/oberman-lab/data/', metavar='DIR',
-                    help='Directory where CIFAR-10 data is saved')
+parser = argparse.ArgumentParser('constructive learning training on ImageNet')
+parser.add_argument('--data-dir', type=str, default='/mnt/data/scratch/data/imagenet', metavar='DIR',
+                    help='Directory where ImageNet data is saved')
 parser.add_argument('--seed', type=int, default=0, metavar='S',
                     help='random seed (default: 0)')
 parser.add_argument('--epochs', type=int, default=100, metavar='N',
@@ -104,7 +104,7 @@ torch.manual_seed(args.seed)
 np.random.seed(args.seed)
 
 # Print args
-print('Contrastive Learning on Cifar-10')
+print('Contrastive Learning on ImageNet')
 for p in vars(args).items():
     print('  ', p[0] + ': ', p[1])
 print('\n')
@@ -117,7 +117,9 @@ print('\n')
 
 # Get Train and Test Loaders
 # Do 3 deparate train loaders, one with each data augmentation
-root = os.path.join(args.data_dir, 'cifar10')
+root = args.data_dir
+traindir = os.path.join(root, 'train/')
+valdir = os.path.join(root, 'validation/')
 
 
 class SimCLRDataTransform(object):
@@ -130,34 +132,67 @@ class SimCLRDataTransform(object):
         return xi, xj
 
 
-color_jitter = transforms.ColorJitter(0.8, 0.8, 0.8, 0.2)
+# color_jitter = transforms.ColorJitter(0.8, 0.8, 0.8, 0.2)
+# data_transforms = transforms.Compose([transforms.RandomResizedCrop(size=32),
+#                                       transforms.RandomHorizontalFlip(),
+#                                       transforms.RandomApply([color_jitter], p=0.8),
+#                                       transforms.RandomGrayscale(p=0.2),
+#                                       GaussianBlur(kernel_size=3),
+#                                       transforms.ToTensor()])
 
-data_transforms = transforms.Compose([transforms.RandomResizedCrop(size=32),
+data_transforms = transforms.Compose([transforms.RandomResizedCrop(size=224),
                                       transforms.RandomHorizontalFlip(),
                                       get_color_distortion(s=1.0),
+                                      GaussianBlur(kernel_size=22),
                                       transforms.ToTensor()])
 
+# data_transforms = transforms.Compose([transforms.RandomResizedCrop(size=32),
+#                                       transforms.RandomHorizontalFlip(),
+#                                       get_color_distortion(s=1.0),
+#                                       transforms.ToTensor()])
+
 data_augment = data_transforms
-ds_train = CIFAR10(root, download=True, train=True, transform=SimCLRDataTransform(data_augment))
 
-num_train = len(ds_train)
-indices = list(range(num_train))
-np.random.shuffle(indices)
+# ds_train = CIFAR10(root, download=True, train=True, transform=SimCLRDataTransform(data_augment))
+#
+# num_train = len(ds_train)
+# indices = list(range(num_train))
+# np.random.shuffle(indices)
+#
+# valid_size = 0.05
+# split = int(np.floor(valid_size * num_train))
+# train_idx, valid_idx = indices[split:], indices[:split]
+#
+# train_sampler = SubsetRandomSampler(train_idx)
+# valid_sampler = SubsetRandomSampler(valid_idx)
+#
+# train_loader = DataLoader(ds_train, batch_size=args.batch_size, sampler=train_sampler,
+#                           num_workers=4, drop_last=True, shuffle=False)
+# valid_loader = DataLoader(ds_train, batch_size=args.test_batch_size, sampler=valid_sampler,
+#                           num_workers=4, drop_last=True)
 
-valid_size = 0.05
-split = int(np.floor(valid_size * num_train))
-train_idx, valid_idx = indices[split:], indices[:split]
+train_loader = torch.utils.data.DataLoader(
+    dataset=datasets.ImageFolder(traindir, transform=SimCLRDataTransform(data_augment)),
+    batch_size=args.batch_size, shuffle=False,
+    num_workers=4, pin_memory=True)
 
-train_sampler = SubsetRandomSampler(train_idx)
-valid_sampler = SubsetRandomSampler(valid_idx)
+valid_loader = torch.utils.data.DataLoader(
+    dataset=datasets.ImageFolder(valdir, transform=SimCLRDataTransform(data_augment)),
+    batch_size=args.test_batch_size, shuffle=False,
+    num_workers=4, pin_memory=True)
 
-train_loader = DataLoader(ds_train, batch_size=args.batch_size, sampler=train_sampler,
-                          num_workers=4, drop_last=True, shuffle=False)
-valid_loader = DataLoader(ds_train, batch_size=args.test_batch_size, sampler=valid_sampler,
-                          num_workers=4, drop_last=True)
+
+# test_loader = torch.utils.data.DataLoader(
+#     dataset=datasets.ImageFolder(valdir, transforms.Compose(
+#         [transforms.Resize(int(288 * 1.14)),  # 256  # 288*1.14
+#          transforms.CenterCrop(288),  # 224  # 288
+#          transforms.ToTensor()])),
+#     sampler=sampler,
+#     batch_size=args.batch_size, shuffle=False,
+#     num_workers=4, pin_memory=True)
 
 # initialize model and move it the GPU (if available)
-classes = 10
+classes = 1000
 model_args = ast.literal_eval(args.model_args)
 in_channels = 3
 model_args.update(bn=args.bn, classes=classes, bias=args.bias,
@@ -256,10 +291,10 @@ def main():
         train(epoch)
         test_loss = test()
 
-        torch.save({'state_dict': model.state_dict()}, './runs/encoder_checkpoint.pth.tar')
+        torch.save({'state_dict': model.state_dict()}, './ImageNetruns/encoder_checkpoint.pth.tar')
 
         if test_loss < best_loss:
-            shutil.copyfile('./runs/encoder_checkpoint.pth.tar', './runs/encoder_best.pth.tar')
+            shutil.copyfile('./ImageNetruns/encoder_checkpoint.pth.tar', './ImageNetruns/encoder_best.pth.tar')
             best_loss = test_loss
 
 

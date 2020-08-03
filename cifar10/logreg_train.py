@@ -76,8 +76,9 @@ group1.add_argument('--model-args', type=str,
                     help='A dictionary of extra arguments passed to the model.'
                          ' (default: "{}")')
 
-parser.add_argument('--lr', type=float, default=0.01)
+parser.add_argument('--lr', type=float, default=0.8)
 parser.add_argument('--epochs', type=int, default=100)
+parser.add_argument('--decay', type=float, default=0.0)
 
 args = parser.parse_args()
 
@@ -144,7 +145,7 @@ if has_cuda:
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
 
-savedict = torch.load('./runs/encoder_best.pth.tar', map_location='cpu')
+savedict = torch.load('./runs3/encoder_best.pth.tar', map_location='cpu')
 model.load_state_dict(savedict['state_dict'])
 model.eval()
 for p in model.parameters():
@@ -183,13 +184,15 @@ if has_cuda:
 loss_fn = torch.nn.CrossEntropyLoss(reduction='mean')
 
 # define optimizer
-optimizer = torch.optim.SGD(clf.parameters(), lr=args.lr)
-scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=len(train_loader), eta_min=0, last_epoch=-1)
+optimizer = torch.optim.SGD(clf.parameters(), lr=args.lr, weight_decay=args.decay)
+# scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=len(train_loader), eta_min=0, last_epoch=-1)
+scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=1.5, last_epoch=-1)
 
 
 def train(epoch):
     model.eval()
     clf.train()
+    print("Current LR: {}".format(scheduler.get_lr()[0]))
 
     for batch_ix, (x, y) in enumerate(train_loader):
         if has_cuda:
@@ -214,8 +217,8 @@ def train(epoch):
             print('[Epoch %2d, batch %3d] training loss: %.3g' %
                   (epoch, batch_ix, loss.data.item()))
 
-    if epoch >= 10:
-        scheduler.step()
+    #    if epoch >= 10:
+    scheduler.step()
 
 
 def test():
@@ -269,10 +272,10 @@ def main():
         train(epoch)
         test_loss, test_acc = test()
 
-        torch.save({'state_dict': clf.state_dict()}, './runs/classifier_checkpoint.pth.tar')
+        torch.save({'state_dict': clf.state_dict()}, './runs3/classifier_checkpoint.pth.tar')
 
         if test_acc > best_acc:
-            shutil.copyfile('./runs/classifier_checkpoint.pth.tar', './runs/classifier_best.pth.tar')
+            shutil.copyfile('./runs3/classifier_checkpoint.pth.tar', './runs3/classifier_best.pth.tar')
             best_acc = test_acc
 
 
