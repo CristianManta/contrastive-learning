@@ -1,4 +1,4 @@
-""" training a constructive learning model on ImageNet.
+""" training a contrastive learning model on ImageNet.
  Optimizer-related arguments not used yet as parameters:
  --> lr-schedule
  --> momentum"""
@@ -143,7 +143,7 @@ class SimCLRDataTransform(object):
 data_transforms = transforms.Compose([transforms.RandomResizedCrop(size=224),
                                       transforms.RandomHorizontalFlip(),
                                       get_color_distortion(s=1.0),
-                                      GaussianBlur(kernel_size=22),
+                                      GaussianBlur(kernel_size=21),
                                       transforms.ToTensor()])
 
 # data_transforms = transforms.Compose([transforms.RandomResizedCrop(size=32),

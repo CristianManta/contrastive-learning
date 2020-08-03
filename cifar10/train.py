@@ -1,4 +1,4 @@
-""" training a constructive learning model on CIFAR-10.
+""" training a contrastive learning model on CIFAR-10.
  Optimizer-related arguments not used yet as parameters:
  --> lr-schedule
  --> momentum"""
