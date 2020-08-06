@@ -88,6 +88,15 @@ group2 = parser.add_argument_group('Regularizers')
 group2.add_argument('--decay', type=float, default=1e-5, metavar='L',
                     help='Lagrange multiplier for weight decay (sum '
                          'parameters squared) (default: 1e-6)')
+group2.add_argument('--penalty', type=float, default=0, metavar='L',
+                    help='Tikhonov regularization parameter (squared norm gradient wrt input)')
+group2.add_argument('--norm', type=str, choices=['L1', 'L2', 'Linf'], default='L2',
+                    help='norm for gradient penalty, wrt model inputs. (default: L2)'
+                         ' Note that this should be dual to the norm measuring adversarial perturbations')
+group2.add_argument('--h', type=float, default=1e-2, metavar='H',
+                    help='finite difference step size (default: 1e-2)')
+group2.add_argument('--fd-order', type=str, choices=['O1', 'O2'], default='O1',
+                    help='accuracy of finite differences (default: O1)')
 
 args = parser.parse_args()
 
@@ -185,11 +194,11 @@ nt_xent_criterion = NTXentLoss(device=torch.cuda.current_device(), batch_size=ar
 # --------
 
 
-trainlog = os.path.join(args.logdir, 'training.csv')
-traincolumns = ['index', 'time', 'loss', 'regularizer']
-with open(trainlog, 'w') as f:
-    logger = csv.DictWriter(f, traincolumns)
-    logger.writeheader()
+# trainlog = os.path.join(args.logdir, 'training.csv')
+# traincolumns = ['index', 'time', 'loss', 'regularizer']
+# with open(trainlog, 'w') as f:
+#     logger = csv.DictWriter(f, traincolumns)
+#     logger.writeheader()
 
 ix = 0  # count of gradient steps
 
@@ -211,95 +220,92 @@ def train(epoch, ttot):
         torch.cuda.synchronize()
     tepoch = time.perf_counter()
 
-    with open(trainlog, 'a') as f:
-        logger = csv.DictWriter(f, traincolumns)
+    for batch_ix, (x, target) in enumerate(train_loader):
 
-        for batch_ix, (x, target) in enumerate(train_loader):
+        if has_cuda:
+            x = x.cuda()
+            target = target.cuda()
 
-            if has_cuda:
-                x = x.cuda()
-                target = target.cuda()
+        optimizer.zero_grad()
+        if regularizing:
+            x.requires_grad_(True)
 
-            optimizer.zero_grad()
-            if regularizing:
-                x.requires_grad_(True)
+        prediction = model(x)
+        lx = train_criterion(prediction, target)
+        loss = lx.mean()
 
-            prediction = model(x)
-            lx = train_criterion(prediction, target)
-            loss = lx.mean()
+        # Compute finite difference approximation of directional derivative of grad loss wrt inputs
+        if regularizing:
 
-            # Compute finite difference approximation of directional derivative of grad loss wrt inputs
-            if regularizing:
+            dx = grad(loss, x, retain_graph=True)[0]
+            sh = dx.shape
+            x.requires_grad_(False)
 
-                dx = grad(loss, x, retain_graph=True)[0]
-                sh = dx.shape
-                x.requires_grad_(False)
+            # v is the finite difference direction.
+            # For example, if norm=='L2', v is the gradient of the loss wrt inputs
+            v = dx.view(sh[0], -1)
+            Nb, Nd = v.shape
 
-                # v is the finite difference direction.
-                # For example, if norm=='L2', v is the gradient of the loss wrt inputs
-                v = dx.view(sh[0], -1)
-                Nb, Nd = v.shape
+            if args.norm == 'L2':
+                nv = v.norm(2, dim=-1, keepdim=True)  # TODO: Question: Why isn't tik_penalty set to (nv.pow(2)).mean()/2?
+                nz = nv.view(-1) > 0
+                v[nz] = v[nz].div(nv[nz])  # Normalizing the gradient
+            if args.norm == 'L1':
+                v = v.sign()
+                v = v / np.sqrt(Nd)
+            elif args.norm == 'Linf':
+                vmax, Jmax = v.abs().max(dim=-1)
+                sg = v.sign()
+                I = torch.arange(Nb, device=v.device)
+                sg = sg[I, Jmax]
 
-                if args.norm == 'L2':
-                    nv = v.norm(2, dim=-1, keepdim=True)
-                    nz = nv.view(-1) > 0
-                    v[nz] = v[nz].div(nv[nz])  # Normalizing the gradient
-                if args.norm == 'L1':
-                    v = v.sign()
-                    v = v / np.sqrt(Nd)
-                elif args.norm == 'Linf':
-                    vmax, Jmax = v.abs().max(dim=-1)
-                    sg = v.sign()
-                    I = torch.arange(Nb, device=v.device)
-                    sg = sg[I, Jmax]
+                v = torch.zeros_like(v)
+                I = I * Nd
+                Ix = Jmax + I
+                v.put_(Ix, sg)
 
-                    v = torch.zeros_like(v)
-                    I = I * Nd
-                    Ix = Jmax + I
-                    v.put_(Ix, sg)
+            v = v.view(sh)
+            xf = x + h * v
 
-                v = v.view(sh)
-                xf = x + h * v
+            mf = model(xf)
+            lf = train_criterion(mf, target)
+            if args.fd_order == 'O2':
+                xb = x - h * v
+                mb = model(xb)
+                lb = train_criterion(mb, target)
+                H = 2 * h
+            else:
+                H = h
+                lb = lx
+            dl = (lf - lb) / H  # This is the finite difference approximation
+            # of the directional derivative of the loss
 
-                mf = model(xf)
-                lf = train_criterion(mf, target)
-                if args.fd_order == 'O2':
-                    xb = x - h * v
-                    mb = model(xb)
-                    lb = train_criterion(mb, target)
-                    H = 2 * h
-                else:
-                    H = h
-                    lb = lx
-                dl = (lf - lb) / H  # This is the finite difference approximation
-                # of the directional derivative of the loss
+        tik_penalty = torch.tensor(np.nan)
+        dlmean = torch.tensor(np.nan)
+        dlmax = torch.tensor(np.nan)
+        if tik > 0:
+            dl2 = dl.pow(2)
+            tik_penalty = dl2.mean() / 2
+            loss = loss + tik * tik_penalty
 
-            tik_penalty = torch.tensor(np.nan)
-            dlmean = torch.tensor(np.nan)
-            dlmax = torch.tensor(np.nan)
-            if tik > 0:
-                dl2 = dl.pow(2)
-                tik_penalty = dl2.mean() / 2
-                loss = loss + tik * tik_penalty
+        loss.backward()  # TODO: It seems that there is already a double backprop going on (one for weights and one for x)
 
-            loss.backward()
+        optimizer.step()
 
-            optimizer.step()
+        if np.isnan(loss.data.item()):
+            raise ValueError('model returned nan during training')
 
-            if np.isnan(loss.data.item()):
-                raise ValueError('model returned nan during training')
+        t = ttot + time.perf_counter() - tepoch
+        fmt = '{:.4f}'
+        logger.writerow({'index': ix,
+                         'time': fmt.format(t),
+                         'loss': fmt.format(loss.item()),
+                         'regularizer': fmt.format(tik_penalty)})
 
-            t = ttot + time.perf_counter() - tepoch
-            fmt = '{:.4f}'
-            logger.writerow({'index': ix,
-                             'time': fmt.format(t),
-                             'loss': fmt.format(loss.item()),
-                             'regularizer': fmt.format(tik_penalty)})
-
-            if (batch_ix % args.log_interval == 0 and batch_ix > 0):
-                print('[%2d, %3d] penalized training loss: %.3g' %
-                      (epoch, batch_ix, loss.data.item()))
-            ix += 1
+        if (batch_ix % args.log_interval == 0 and batch_ix > 0):
+            print('[%2d, %3d] penalized training loss: %.3g' %
+                  (epoch, batch_ix, loss.data.item()))
+        ix += 1
 
     if has_cuda:
         torch.cuda.synchronize()
