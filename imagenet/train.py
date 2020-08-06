@@ -46,8 +46,6 @@ parser.add_argument('--seed', type=int, default=0, metavar='S',
                     help='random seed (default: 0)')
 parser.add_argument('--epochs', type=int, default=100, metavar='N',
                     help='number of epochs to train (default: 100)')
-parser.add_argument('--test-batch-size', type=int, default=128, metavar='N',
-                    help='input batch size for testing (default: 128)')
 # parser.add_argument('--log-interval', type=int, default=100, metavar='N',
 #        help='how many batches to wait before logging training status (default: 100)')
 # parser.add_argument('--logdir', type=str, default=None,metavar='DIR',
@@ -178,7 +176,7 @@ train_loader = torch.utils.data.DataLoader(
 
 valid_loader = torch.utils.data.DataLoader(
     dataset=datasets.ImageFolder(valdir, transform=SimCLRDataTransform(data_augment)),
-    batch_size=args.test_batch_size, shuffle=False,
+    batch_size=args.batch_size, shuffle=False,
     num_workers=8, pin_memory=True)
 
 

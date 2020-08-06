@@ -40,14 +40,12 @@ from loss.nt_xent import NTXentLoss
 from custom_transforms import get_color_distortion, GaussianBlur
 
 parser = argparse.ArgumentParser('constructive learning training on CIFAR-10')
-parser.add_argument('--data-dir', type=str, default='/home/math/oberman-lab/data/', metavar='DIR',
+parser.add_argument('--data-dir', type=str, default='/home/campus/oberman-lab/data/', metavar='DIR',
                     help='Directory where CIFAR-10 data is saved')
 parser.add_argument('--seed', type=int, default=0, metavar='S',
                     help='random seed (default: 0)')
 parser.add_argument('--epochs', type=int, default=100, metavar='N',
                     help='number of epochs to train (default: 100)')
-parser.add_argument('--test-batch-size', type=int, default=128, metavar='N',
-                    help='input batch size for testing (default: 128)')
 # parser.add_argument('--log-interval', type=int, default=100, metavar='N',
 #        help='how many batches to wait before logging training status (default: 100)')
 # parser.add_argument('--logdir', type=str, default=None,metavar='DIR',
@@ -153,7 +151,7 @@ valid_sampler = SubsetRandomSampler(valid_idx)
 
 train_loader = DataLoader(ds_train, batch_size=args.batch_size, sampler=train_sampler,
                           num_workers=4, drop_last=True, shuffle=False)
-valid_loader = DataLoader(ds_train, batch_size=args.test_batch_size, sampler=valid_sampler,
+valid_loader = DataLoader(ds_train, batch_size=args.batch_size, sampler=valid_sampler,
                           num_workers=4, drop_last=True)
 
 # initialize model and move it the GPU (if available)
