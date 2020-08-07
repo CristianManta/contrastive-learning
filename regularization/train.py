@@ -33,7 +33,7 @@ from torch.optim.lr_scheduler import LambdaLR
 from torch.autograd import grad
 import torchnet as tnt
 
-from custom_transforms import get_color_distortion
+# from custom_transforms import get_color_distortion
 import models.cifar as cifarmodels
 from loss.nt_xent import NTXentLoss
 
@@ -135,15 +135,43 @@ class SimCLRDataTransform(object):
         return xi, xj
 
 
-data_transforms = transforms.Compose([transforms.RandomResizedCrop(size=32),
-                                      transforms.RandomHorizontalFlip(),
-                                      get_color_distortion(s=1.0),
-                                      transforms.ToTensor()])
+class TensorSimCLRDataTransform:
+    """Assumes it is called on tensors, unlike its analogue SimCLRDataTransform. DO NOT pass a transforms.Compose()
+    object in the constructor of this class. Pass directly the transformations as separate arguments."""
 
-data_augment = SimCLRDataTransform(data_transforms)  # This should be called on original samples of x
-from_tensor_to_PIL = transforms.ToPILImage()
+    def __init__(self, *argv):
+        self.transforms = argv
+
+    def __call__(self, sample):
+        for transform in self.transforms:
+            sample = transform(sample)
+        return sample
+
+
+def get_color_distortion(s=1.0):
+    # transforms a PIL image
+    # s is the strength of color distortion.
+    color_jitter = transforms.ColorJitter(0.8 * s, 0.8 * s, 0.8 * s, 0.2 * s)
+    rnd_color_jitter = transforms.RandomApply([color_jitter], p=0.8)
+    rnd_gray = transforms.RandomGrayscale(p=0.2)
+    color_distort = transforms.Compose([
+        rnd_color_jitter,
+        rnd_gray])
+    return color_distort
+
+
+# data_transforms = transforms.Compose([transforms.RandomResizedCrop(size=32),
+#                                       transforms.RandomHorizontalFlip(),
+#                                       get_color_distortion(s=1.0),
+#                                       transforms.ToTensor()])
+
+
+data_augment = TensorSimCLRDataTransform(transforms.RandomResizedCrop(size=32),
+                                         transforms.RandomHorizontalFlip(),
+                                         get_color_distortion(
+                                             s=1.0))  # This should be called on original samples of x
+# from_tensor_to_PIL = transforms.ToPILImage()
 ds_train = CIFAR10(root, download=True, train=True, transform=transforms.ToTensor())
-# removed transform argument to do them manually
 
 num_train = len(ds_train)
 indices = list(range(num_train))
@@ -221,9 +249,7 @@ def train(epoch, ttot):
     tepoch = time.perf_counter()
 
     for batch_ix, (x, target) in enumerate(train_loader):
-        print(x.shape)
-        exit(0)
-        x = transforms.ToPILImage()(x.squeeze_(0))
+        # x = transforms.ToPILImage()(x.squeeze_(0))
 
         if has_cuda:
             x = x.cuda()

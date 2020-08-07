@@ -89,7 +89,7 @@ group0.add_argument('--momentum', type=float, default=0.9, metavar='M',
 group2 = parser.add_argument_group('Regularizers')
 group2.add_argument('--decay', type=float, default=1e-5, metavar='L',
                     help='Lagrange multiplier for weight decay (sum '
-                         'parameters squared) (default: 1e-6)')
+                         'parameters squared) (default: 1e-5)')
 
 args = parser.parse_args()
 
