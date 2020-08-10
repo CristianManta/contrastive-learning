@@ -75,7 +75,7 @@ group1.add_argument('--model-args', type=str,
                          ' (default: "{}")')
 
 group0 = parser.add_argument_group('Optimizer hyperparameters')
-group0.add_argument('--batch-size', type=int, default=128, metavar='N',
+group0.add_argument('--batch-size', type=int, default=4, metavar='N',
                     help='Input batch size for training. (default: 128)')
 group0.add_argument('--lr', type=float, default=3e-4, metavar='LR',
                     help='Initial step size. (default: 0.15)')
@@ -136,34 +136,24 @@ class SimCLRDataTransform(object):
         return xi, xj
 
 
-class TensorSimCLRDataTransform:
-    """Assumes it is called on tensors, unlike its analogue SimCLRDataTransform. DO NOT pass a transforms.Compose()
-    object in the constructor of this class. Pass directly the transformations as separate arguments."""
-
-    def __init__(self, *argv):
-        self.transforms = argv
-
-    def __call__(self, sample):
-        for transform in self.transforms:
-            sample = transform(sample)
-        return sample
-
-
 class RandomGrayscale:
-    """Converts a tensor to grayscale with probability p and outputs a Tensor"""
+    """Converts ONE tensor image to grayscale with probability p and outputs a Tensor image"""
 
     def __init__(self, p=0.1):
         self.p = p
 
     def to_grayscale(self, img):
-        new_img = torch.mean(img, dim=1, keepdim=True)
-        new_img = torch.cat((new_img, new_img, new_img), dim=1)
+        new_img = torch.mean(img, dim=0, keepdim=True)
+        new_img = torch.cat((new_img, new_img, new_img), dim=0)
         return new_img
 
     def __call__(self, img):
         if random.random() < self.p:
-            return self.to_grayscale(img)
-        print(img.shape)
+            print(f"Before transformation: img.shape = {img.shape}\n")
+            gray_img = self.to_grayscale(img)
+            print(f"After transformation: img.shape = {gray_img.shape}\n")
+            return gray_img
+        print(f"Outside the loop: img.shape = {img.shape}\n")
         return img
 
 
@@ -194,15 +184,13 @@ data_transforms = transforms.Compose([transforms.RandomResizedCrop(size=32),
                                       transforms.RandomHorizontalFlip(),
                                       get_color_distortion(s=1.0)])
 
-data_augment = SimCLRDataTransform(data_transforms)
-color_jitter = transforms.ColorJitter(0.8, 0.8, 0.8, 0.2)
+# data_augment = SimCLRDataTransform(data_transforms)
+# color_jitter = transforms.ColorJitter(0.8, 0.8, 0.8, 0.2)
+# random_gray = RandomGrayscale(p=0.2)
 
 ds_train = CIFAR10(root, download=True, train=True, transform=transforms.ToTensor())
 # ds_train = CIFAR10(root, download=True, train=True, transform=transforms.Compose([transforms.ToTensor(),
-#                                                                                   transforms.RandomResizedCrop(size=32),
-#                                                                                   transforms.RandomHorizontalFlip(),
-#                                                                                   transforms.RandomApply([color_jitter], p=0.8),
-#                                                                                   RandomGrayscale(p=0.2)]))
+#                                                                                   color_jitter]))
 
 # ds_train = CIFAR10(root, download=True, train=True, transform=transforms.Compose([transforms.ToTensor(),
 #                                                                                   transforms.RandomResizedCrop(size=32),
@@ -223,12 +211,37 @@ train_sampler = SubsetRandomSampler(train_idx)
 valid_sampler = SubsetRandomSampler(valid_idx)
 
 train_loader = DataLoader(ds_train, batch_size=args.batch_size, sampler=train_sampler,
-                          num_workers=4, drop_last=True, shuffle=False)
+                          num_workers=1, drop_last=True, shuffle=False)
 valid_loader = DataLoader(ds_train, batch_size=args.batch_size, sampler=valid_sampler,
-                          num_workers=4, drop_last=True)
+                          num_workers=1, drop_last=True)
+
+
+# def one_image_at_a_time_transform(x, transform):
+#     for i in range(x.shape[0]):
+#         x[i] = transform(x[i])
+#     return x
+
+
+class OneImageAtATimeTransform:
+    def __init__(self, transform):
+        self.transform = transform
+
+    def __call__(self, x):
+        xis = x.clone()
+        xjs = x.clone()
+        for i in range(x.shape[0]):
+            xis[i] = self.transform(xis[i])
+            xjs[i] = self.transform(xjs[i])
+        return xis, xjs
+
 
 for (x, y) in train_loader:
+    print(f"Before: {x.shape}\n")
+    tr = OneImageAtATimeTransform(data_transforms)
+    xis, xjs = tr(x)
+    print(f"After: {xis.shape}, {xjs.shape}\n")
     print("No bug")
+    break
 exit(0)
 
 # initialize model and move it the GPU (if available)
