@@ -37,7 +37,7 @@ from torch.utils.data import DataLoader
 import models.cifar as cifarmodels
 from loss.nt_xent import NTXentLoss
 
-from custom_transforms import get_color_distortion, GaussianBlur
+from transformations.custom_transforms import get_color_distortion, GaussianBlur
 
 parser = argparse.ArgumentParser('constructive learning training on CIFAR-10')
 parser.add_argument('--data-dir', type=str, default='/home/campus/oberman-lab/data/', metavar='DIR',

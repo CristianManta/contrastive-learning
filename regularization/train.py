@@ -9,6 +9,7 @@ sys.path.insert(0, _pth)  # I just made sure that the root of the project (Contr
 # script is. Unfortunately, by default Python doesn't allow imports from above the current file directory.
 
 
+import cv2
 import random
 import time, datetime
 import yaml
@@ -24,7 +25,7 @@ from torch.utils.data.sampler import SubsetRandomSampler
 from torch.utils.data import DataLoader
 
 import torchvision
-import torchvision.transforms as transforms
+import transformations.transforms as transforms
 from torchvision.datasets import CIFAR10
 
 import torch.backends.cudnn as cudnn
@@ -33,7 +34,7 @@ from torch.optim.lr_scheduler import LambdaLR
 from torch.autograd import grad
 import torchnet as tnt
 
-# from custom_transforms import get_color_distortion
+# from transformations.custom_transforms import get_color_distortion
 import models.cifar as cifarmodels
 from loss.nt_xent import NTXentLoss
 
@@ -148,12 +149,30 @@ class TensorSimCLRDataTransform:
         return sample
 
 
+class RandomGrayscale:
+    """Converts a tensor to grayscale with probability p and outputs a Tensor"""
+
+    def __init__(self, p=0.1):
+        self.p = p
+
+    def to_grayscale(self, img):
+        new_img = torch.mean(img, dim=1, keepdim=True)
+        new_img = torch.cat((new_img, new_img, new_img), dim=1)
+        return new_img
+
+    def __call__(self, img):
+        if random.random() < self.p:
+            return self.to_grayscale(img)
+        print(img.shape)
+        return img
+
+
 def get_color_distortion(s=1.0):
-    # transforms a PIL image
+    # transforms a Tensor image
     # s is the strength of color distortion.
     color_jitter = transforms.ColorJitter(0.8 * s, 0.8 * s, 0.8 * s, 0.2 * s)
     rnd_color_jitter = transforms.RandomApply([color_jitter], p=0.8)
-    rnd_gray = transforms.RandomGrayscale(p=0.2)
+    rnd_gray = RandomGrayscale(p=0.2)
     color_distort = transforms.Compose([
         rnd_color_jitter,
         rnd_gray])
@@ -166,12 +185,31 @@ def get_color_distortion(s=1.0):
 #                                       transforms.ToTensor()])
 
 
-data_augment = TensorSimCLRDataTransform(transforms.RandomResizedCrop(size=32),
-                                         transforms.RandomHorizontalFlip(),
-                                         get_color_distortion(
-                                             s=1.0))  # This should be called on original samples of x
-# from_tensor_to_PIL = transforms.ToPILImage()
+# data_augment = TensorSimCLRDataTransform(transforms.RandomResizedCrop(size=32),
+#                                          transforms.RandomHorizontalFlip(),
+#                                          get_color_distortion(
+#                                              s=1.0))  # This should be called on original samples of x
+
+data_transforms = transforms.Compose([transforms.RandomResizedCrop(size=32),
+                                      transforms.RandomHorizontalFlip(),
+                                      get_color_distortion(s=1.0)])
+
+data_augment = SimCLRDataTransform(data_transforms)
+color_jitter = transforms.ColorJitter(0.8, 0.8, 0.8, 0.2)
+
 ds_train = CIFAR10(root, download=True, train=True, transform=transforms.ToTensor())
+# ds_train = CIFAR10(root, download=True, train=True, transform=transforms.Compose([transforms.ToTensor(),
+#                                                                                   transforms.RandomResizedCrop(size=32),
+#                                                                                   transforms.RandomHorizontalFlip(),
+#                                                                                   transforms.RandomApply([color_jitter], p=0.8),
+#                                                                                   RandomGrayscale(p=0.2)]))
+
+# ds_train = CIFAR10(root, download=True, train=True, transform=transforms.Compose([transforms.ToTensor(),
+#                                                                                   transforms.RandomResizedCrop(size=32),
+#                                                                                   transforms.RandomHorizontalFlip(),
+#                                                                                   transforms.RandomApply([color_jitter], p=0.8)
+#                                                                                   ]))
+
 
 num_train = len(ds_train)
 indices = list(range(num_train))
@@ -188,6 +226,10 @@ train_loader = DataLoader(ds_train, batch_size=args.batch_size, sampler=train_sa
                           num_workers=4, drop_last=True, shuffle=False)
 valid_loader = DataLoader(ds_train, batch_size=args.batch_size, sampler=valid_sampler,
                           num_workers=4, drop_last=True)
+
+for (x, y) in train_loader:
+    print("No bug")
+exit(0)
 
 # initialize model and move it the GPU (if available)
 classes = 10
@@ -259,8 +301,8 @@ def train(epoch, ttot):
         if regularizing:
             x.requires_grad_(True)
 
-        xis = data_augment(x)  # Not sure if this block should be placed before the x.cuda() line
-        xjs = data_augment(x)
+        xis, xjs = data_augment(x)  # Not sure if this block should be placed before the x.cuda() line
+        # xjs = data_augment(x)
 
         his, zis = model(xis)
         hjs, zjs = model(xjs)
