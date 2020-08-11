@@ -128,6 +128,8 @@ root = os.path.join(args.data_dir, 'cifar10')
 
 
 class SimCLRDataTransform:
+    """Produces the 2 data augmentations for each image. To be called on a batch of images (Tensor of shape BxCxWxH)"""
+
     def __init__(self, transform):
         self.transform = transform
 
@@ -170,35 +172,13 @@ def get_color_distortion(s=1.0):
     return color_distort
 
 
-# data_transforms = transforms.Compose([transforms.RandomResizedCrop(size=32),
-#                                       transforms.RandomHorizontalFlip(),
-#                                       get_color_distortion(s=1.0),
-#                                       transforms.ToTensor()])
-
-
-# data_augment = TensorSimCLRDataTransform(transforms.RandomResizedCrop(size=32),
-#                                          transforms.RandomHorizontalFlip(),
-#                                          get_color_distortion(
-#                                              s=1.0))  # This should be called on original samples of x
-
 data_transforms = transforms.Compose([transforms.RandomResizedCrop(size=32),
                                       transforms.RandomHorizontalFlip(),
                                       get_color_distortion(s=1.0)])
 
 data_augment = SimCLRDataTransform(data_transforms)
-# color_jitter = transforms.ColorJitter(0.8, 0.8, 0.8, 0.2)
-# random_gray = RandomGrayscale(p=0.2)
 
 ds_train = CIFAR10(root, download=True, train=True, transform=transforms.ToTensor())
-# ds_train = CIFAR10(root, download=True, train=True, transform=transforms.Compose([transforms.ToTensor(),
-#                                                                                   color_jitter]))
-
-# ds_train = CIFAR10(root, download=True, train=True, transform=transforms.Compose([transforms.ToTensor(),
-#                                                                                   transforms.RandomResizedCrop(size=32),
-#                                                                                   transforms.RandomHorizontalFlip(),
-#                                                                                   transforms.RandomApply([color_jitter], p=0.8)
-#                                                                                   ]))
-
 
 num_train = len(ds_train)
 indices = list(range(num_train))
@@ -228,9 +208,7 @@ for (x, y) in train_loader:
 
 print("No bug\n")
 
-
 exit(0)
-
 
 # initialize model and move it the GPU (if available)
 classes = 10
