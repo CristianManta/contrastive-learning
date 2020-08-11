@@ -39,7 +39,7 @@ from loss.nt_xent import NTXentLoss
 
 from transformations.custom_transforms import get_color_distortion, GaussianBlur
 
-parser = argparse.ArgumentParser('constructive learning training on CIFAR-10')
+parser = argparse.ArgumentParser('contrastive learning training on CIFAR-10')
 parser.add_argument('--data-dir', type=str, default='/home/campus/oberman-lab/data/', metavar='DIR',
                     help='Directory where CIFAR-10 data is saved')
 parser.add_argument('--seed', type=int, default=0, metavar='S',

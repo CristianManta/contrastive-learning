@@ -9,17 +9,17 @@ sys.path.insert(0, _pth)  # I just made sure that the root of the project (Contr
 # script is. Unfortunately, by default Python doesn't allow imports from above the current file directory.
 
 
-import cv2
 import random
-import time, datetime
-import yaml
-import ast, bisect
-import csv
-
+import ast
 import numpy as np
+from statistics import mean
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+import torch.backends.cudnn as cudnn
+from torch.autograd import grad
 
 from torch.utils.data.sampler import SubsetRandomSampler
 from torch.utils.data import DataLoader
@@ -28,28 +28,18 @@ import torchvision
 import transformations.transforms as transforms
 from torchvision.datasets import CIFAR10
 
-import torch.backends.cudnn as cudnn
-from torch import optim
-from torch.optim.lr_scheduler import LambdaLR
-from torch.autograd import grad
-import torchnet as tnt
-
-# from transformations.custom_transforms import get_color_distortion
 import models.cifar as cifarmodels
 from loss.nt_xent import NTXentLoss
 
-parser = argparse.ArgumentParser('constructive learning training on CIFAR-10')
+parser = argparse.ArgumentParser('contrastive learning training on CIFAR-10')
 parser.add_argument('--data-dir', type=str, default='/home/campus/oberman-lab/data/', metavar='DIR',
                     help='Directory where CIFAR-10 data is saved')
 parser.add_argument('--seed', type=int, default=0, metavar='S',
                     help='random seed (default: 0)')
 parser.add_argument('--epochs', type=int, default=100, metavar='N',
                     help='number of epochs to train (default: 100)')
-# parser.add_argument('--log-interval', type=int, default=100, metavar='N',
-#        help='how many batches to wait before logging training status (default: 100)')
-# parser.add_argument('--logdir', type=str, default=None,metavar='DIR',
-#        help='directory for outputting log files. (default: ./logs/DATASET/MODEL/TIMESTAMP/)')
-
+parser.add_argument('--log-interval', type=int, default=50, metavar='N',
+                    help='how many batches to wait before logging training status (default: 50)')
 group1 = parser.add_argument_group('Model hyperparameters')
 group1.add_argument('--model', type=str, default='ResNet50',
                     help='Model architecture (default: ResNet50)')
@@ -78,7 +68,7 @@ group0 = parser.add_argument_group('Optimizer hyperparameters')
 group0.add_argument('--batch-size', type=int, default=128, metavar='N',
                     help='Input batch size for training. (default: 128)')
 group0.add_argument('--lr', type=float, default=3e-4, metavar='LR',
-                    help='Initial step size. (default: 0.15)')
+                    help='Initial step size. (default: 3e-4)')
 group0.add_argument('--lr-schedule', type=str, metavar='[[epoch,ratio]]',
                     default='[[0,1],[30,0.2],[60,0.04],[80,0.008]]', help='List of epochs and multiplier '
                                                                           'for changing the learning rate (default: [[0,1],[30,0.2],[60,0.04],[80,0.008]]). ')
@@ -88,9 +78,9 @@ group0.add_argument('--momentum', type=float, default=0.9, metavar='M',
 group2 = parser.add_argument_group('Regularizers')
 group2.add_argument('--decay', type=float, default=1e-5, metavar='L',
                     help='Lagrange multiplier for weight decay (sum '
-                         'parameters squared) (default: 1e-6)')
-group2.add_argument('--penalty', type=float, default=0, metavar='L',
-                    help='Tikhonov regularization parameter (squared norm gradient wrt input)')
+                         'parameters squared) (default: 1e-5)')
+group2.add_argument('--penalty', type=float, default=0.1, metavar='L',
+                    help='Tikhonov regularization parameter (default: 0.1)')
 group2.add_argument('--norm', type=str, choices=['L1', 'L2', 'Linf'], default='L2',
                     help='norm for gradient penalty, wrt model inputs. (default: L2)'
                          ' Note that this should be dual to the norm measuring adversarial perturbations')
@@ -116,19 +106,17 @@ for p in vars(args).items():
     print('  ', p[0] + ': ', p[1])
 print('\n')
 
-# Set and create logging directory
-# if args.logdir is None:
-#    args.logdir = os.path.join('./logs/',args.dataset,args.model,
-#            '{0:%Y-%m-%dT%H%M%S}'.format(datetime.datetime.now()))
-# os.makedirs(args.logdir, exist_ok=True)
+# Create logging directory
+if not os.path.exists('./runs'):
+    os.makedirs('./runs')
 
 # Get Train and Test Loaders
-# Do 3 deparate train loaders, one with each data augmentation
 root = os.path.join(args.data_dir, 'cifar10')
 
 
 class SimCLRDataTransform:
-    """Produces the 2 data augmentations for each image. To be called on a batch of images (Tensor of shape BxCxWxH)"""
+    """Produces the 2 data augmentations for each image. To be called on a batch of images (Tensor of shape BxCxWxH
+    or BxCxHxW)."""
 
     def __init__(self, transform):
         self.transform = transform
@@ -143,7 +131,8 @@ class SimCLRDataTransform:
 
 
 class RandomGrayscale:
-    """Converts ONE tensor image to grayscale with probability p and outputs a Tensor image"""
+    """In-house random grayscale. Converts ONE tensor image to grayscale with probability p
+    and outputs a Tensor image. The PyTorch RandomGrayscale doesn't take Tensor type arguments."""
 
     def __init__(self, p=0.1):
         self.p = p
@@ -161,8 +150,7 @@ class RandomGrayscale:
 
 
 def get_color_distortion(s=1.0):
-    # transforms a Tensor image
-    # s is the strength of color distortion.
+    """Transforms a Tensor image. s is the strength of color distortion."""
     color_jitter = transforms.ColorJitter(0.8 * s, 0.8 * s, 0.8 * s, 0.2 * s)
     rnd_color_jitter = transforms.RandomApply([color_jitter], p=0.8)
     rnd_gray = RandomGrayscale(p=0.2)
@@ -196,20 +184,6 @@ train_loader = DataLoader(ds_train, batch_size=args.batch_size, sampler=train_sa
 valid_loader = DataLoader(ds_train, batch_size=args.batch_size, sampler=valid_sampler,
                           num_workers=4, drop_last=True)
 
-# def one_image_at_a_time_transform(x, transform):
-#     for i in range(x.shape[0]):
-#         x[i] = transform(x[i])
-#     return x
-
-for (x, y) in train_loader:
-    x = x.cuda()
-    x.requires_grad_(True)
-    xis, xjs = data_augment(x)
-
-print("No bug\n")
-
-exit(0)
-
 # initialize model and move it the GPU (if available)
 classes = 10
 model_args = ast.literal_eval(args.model_args)
@@ -226,8 +200,6 @@ if has_cuda:
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
 
-# print(model)
-
 # Set Optimizer and learning rate schedule
 optimizer = torch.optim.Adam(model.parameters(), args.lr, weight_decay=args.decay)
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=len(train_loader), eta_min=0,
@@ -243,22 +215,13 @@ nt_xent_criterion = NTXentLoss(device=torch.cuda.current_device(), batch_size=ar
 # --------
 
 
-# trainlog = os.path.join(args.logdir, 'training.csv')
-# traincolumns = ['index', 'time', 'loss', 'regularizer']
-# with open(trainlog, 'w') as f:
-#     logger = csv.DictWriter(f, traincolumns)
-#     logger.writeheader()
-
 ix = 0  # count of gradient steps
-
 tik = args.penalty
-
 regularizing = tik > 0
-
 h = args.h  # finite difference step size
 
 
-def train(epoch, ttot):
+def train(epoch):
     global ix
 
     # Put the model in train mode (unfreeze batch norm parameters)
@@ -267,20 +230,20 @@ def train(epoch, ttot):
     # Run through the training data
     if has_cuda:
         torch.cuda.synchronize()
-    tepoch = time.perf_counter()
 
     for batch_ix, (x, target) in enumerate(train_loader):
 
-        if has_cuda:
-            x = x.cuda()
-            target = target.cuda()
-
         optimizer.zero_grad()
-        if regularizing:
-            x.requires_grad_(True)
 
-        xis, xjs = data_augment(x)  # Not sure if this block should be placed before the x.cuda() line
-        # xjs = data_augment(x)
+        xis, xjs = data_augment(x)  # NOTE: x isn't on CUDA. I reserve cuda for xis and xjs
+
+        if has_cuda:
+            xis = xis.cuda()
+            xjs = xjs.cuda()
+
+        if regularizing:
+            xis.requires_grad_(True)
+            xjs.requires_grad_(True)
 
         his, zis = model(xis)
         hjs, zjs = model(xjs)
@@ -293,186 +256,170 @@ def train(epoch, ttot):
         # Compute finite difference approximation of directional derivative of grad loss wrt inputs
         if regularizing:
 
-            dx = grad(loss, x, retain_graph=True)[0]
-            sh = dx.shape
-            x.requires_grad_(False)
+            dx_xis = grad(loss, xis, retain_graph=True)[0]
+            sh = dx_xis.shape
+            xis.requires_grad_(False)
+
+            dx_xjs = grad(loss, xjs, retain_graph=True)[0]
+            xjs.requires_grad_(False)
 
             # v is the finite difference direction.
             # For example, if norm=='L2', v is the gradient of the loss wrt inputs
-            v = dx.view(sh[0], -1)
-            Nb, Nd = v.shape
+            v_xis = dx_xis.view(sh[0], -1)
+            v_xjs = dx_xjs.view(sh[0], -1)
+            Nb, Nd = v_xis.shape
 
             if args.norm == 'L2':
-                nv = v.norm(2, dim=-1,
-                            keepdim=True)  # TODO: Question: Why isn't tik_penalty set to (nv.pow(2)).mean()/2?
-                nz = nv.view(-1) > 0
-                v[nz] = v[nz].div(nv[nz])  # Normalizing the gradient
+                nv_xis = v_xis.norm(2, dim=-1,
+                                    keepdim=True)
+                nz_xis = nv_xis.view(-1) > 0
+                v_xis[nz_xis] = v_xis[nz_xis].div(nv_xis[nz_xis])  # Normalizing the gradient
+
+                nv_xjs = v_xjs.norm(2, dim=-1,
+                                    keepdim=True)
+                nz_xjs = nv_xjs.view(-1) > 0
+                v_xjs[nz_xjs] = v_xjs[nz_xjs].div(nv_xjs[nz_xjs])  # Normalizing the gradient
+
             if args.norm == 'L1':
-                v = v.sign()
-                v = v / np.sqrt(Nd)
+                v_xis = v_xis.sign()
+                v_xis = v_xis / np.sqrt(Nd)
+
+                v_xjs = v_xjs.sign()
+                v_xjs = v_xjs / np.sqrt(Nd)
+
             elif args.norm == 'Linf':
-                vmax, Jmax = v.abs().max(dim=-1)
-                sg = v.sign()
-                I = torch.arange(Nb, device=v.device)
-                sg = sg[I, Jmax]
+                vmax_xis, Jmax_xis = v_xis.abs().max(dim=-1)
+                sg_xis = v_xis.sign()
+                I_xis = torch.arange(Nb, device=v_xis.device)
+                sg_xis = sg_xis[I_xis, Jmax_xis]
 
-                v = torch.zeros_like(v)
-                I = I * Nd
-                Ix = Jmax + I
-                v.put_(Ix, sg)
+                v_xis = torch.zeros_like(v_xis)
+                I_xis = I_xis * Nd
+                Ix_xis = Jmax_xis + I_xis
+                v_xis.put_(Ix_xis, sg_xis)
 
-            v = v.view(sh)
-            xf = x + h * v
-            print(xf.is_cuda)
-            exit(0)
+                vmax_xjs, Jmax_xjs = v_xjs.abs().max(dim=-1)
+                sg_xjs = v_xjs.sign()
+                I_xjs = torch.arange(Nb, device=v_xjs.device)
+                sg_xjs = sg_xjs[I_xjs, Jmax_xjs]
 
-            mf = model(xf)
-            lf = train_criterion(mf, target)
+                v_xjs = torch.zeros_like(v_xjs)
+                I_xjs = I_xjs * Nd
+                Ix_xjs = Jmax_xjs + I_xjs
+                v_xjs.put_(Ix_xjs, sg_xjs)
+
+            v_xis = v_xis.view(sh)
+            v_xjs = v_xjs.view(sh)
+
+            # First getting the approximation of the directional derivative if we perturbe the xis
+            xf_xis = xis + h * v_xis
+
+            _, mf_zis = model(xf_xis)
+            mf_zis = F.normalize(mf_zis, dim=1)
+
+            lf = nt_xent_criterion(mf_zis, zjs)
             if args.fd_order == 'O2':
-                xb = x - h * v
-                mb = model(xb)
-                lb = train_criterion(mb, target)
+                xb_xis = xis - h * v_xis
+                _, mb_zis = model(xb_xis)
+                mb_zis = F.normalize(mb_zis, dim=1)
+
+                lb = nt_xent_criterion(mb_zis, zjs)
                 H = 2 * h
             else:
                 H = h
-                lb = lx
-            dl = (lf - lb) / H  # This is the finite difference approximation
+                lb = loss
+            dl_xis = (lf - lb) / H  # This is the finite difference approximation
             # of the directional derivative of the loss
+
+            # Now getting the approximation of the directional derivative if we perturbe the xjs
+            xf_xjs = xjs + h * v_xjs
+
+            _, mf_zjs = model(xf_xjs)
+            mf_zjs = F.normalize(mf_zjs, dim=1)
+
+            lf = nt_xent_criterion(zis, mf_zjs)
+            if args.fd_order == 'O2':
+                xb_xjs = xjs - h * v_xjs
+                _, mb_zjs = model(xb_xjs)
+                mb_zjs = F.normalize(mb_zjs, dim=1)
+
+                lb = nt_xent_criterion(zis, mb_zjs)
+                H = 2 * h
+            else:
+                H = h
+                lb = loss
+            dl_xjs = (lf - lb) / H
+
+            dl = 0.5 * (dl_xis + dl_xjs)
 
         tik_penalty = torch.tensor(np.nan)
         dlmean = torch.tensor(np.nan)
         dlmax = torch.tensor(np.nan)
-        if tik > 0:
-            dl2 = dl.pow(2)
-            tik_penalty = dl2.mean() / 2
+        if regularizing:
+            tik_penalty = dl.pow(2) / 2
             loss = loss + tik * tik_penalty
 
-        loss.backward()  # TODO: It seems that there is already a double backprop going on (one for weights and one for x)
+        loss.backward()
 
         optimizer.step()
 
         if np.isnan(loss.data.item()):
             raise ValueError('model returned nan during training')
 
-        t = ttot + time.perf_counter() - tepoch
-        fmt = '{:.4f}'
-        logger.writerow({'index': ix,
-                         'time': fmt.format(t),
-                         'loss': fmt.format(loss.item()),
-                         'regularizer': fmt.format(tik_penalty)})
-
-        if (batch_ix % args.log_interval == 0 and batch_ix > 0):
-            print('[%2d, %3d] penalized training loss: %.3g' %
+        if batch_ix % args.log_interval == 0 and batch_ix > 0:
+            print('[epoch %2d, batch %3d] penalized training loss: %.3g' %
                   (epoch, batch_ix, loss.data.item()))
         ix += 1
 
     if has_cuda:
         torch.cuda.synchronize()
 
-    return ttot + time.perf_counter() - tepoch
-
 
 # ------------------
-# Evaluate test data
+# Evaluate on validation set
 # ------------------
-# testlog = os.path.join(args.logdir, 'test.csv')
-# testcolumns = ['epoch', 'time', 'fval', 'pct_err', 'train_fval', 'train_pct_err']
-# with open(testlog, 'w') as f:
-#     logger = csv.DictWriter(f, testcolumns)
-#     logger.writeheader()
 
-
-def test(epoch, ttot):
+def test():
     model.eval()
+
+    loss_vals = []
 
     with torch.no_grad():
 
-        # Get the true training loss and error
-        top1_train = tnt.meter.ClassErrorMeter()
-        train_loss = tnt.meter.AverageValueMeter()
-        for data, target in train_loader:
+        for (x, target) in valid_loader:
+
+            xis, xjs = data_augment(x)
+
             if has_cuda:
-                target = target.cuda(0)
-                data = data.cuda(0)
+                xis, xjs = xis.cuda(), xjs.cuda()
 
-            output = model(data)
+            his, zis = model(xis)
+            hjs, zjs = model(xjs)
 
-            top1_train.add(output.data, target.data)
-            loss = criterion(output, target)
-            train_loss.add(loss.data.item())
+            zis = F.normalize(zis, dim=1)
+            zjs = F.normalize(zjs, dim=1)
 
-        t1t = top1_train.value()[0]
-        lt = train_loss.value()[0]
+            loss = nt_xent_criterion(zis, zjs)
+            loss_vals.append(loss.data.item())
 
-        # Evaluate test data
-        test_loss = tnt.meter.AverageValueMeter()
-        top1 = tnt.meter.ClassErrorMeter()
-        for data, target in test_loader:
-            if has_cuda:
-                target = target.cuda(0)
-                data = data.cuda(0)
+    loss_val = mean(loss_vals)
+    print('Avg. test loss: %.3g \n' % (loss_val))
 
-            output = model(data)
-
-            loss = criterion(output, target)
-
-            top1.add(output, target)
-            test_loss.add(loss.item())
-
-        t1 = top1.value()[0]
-        l = test_loss.value()[0]
-
-    # Report results
-    with open(testlog, 'a') as f:
-        logger = csv.DictWriter(f, testcolumns)
-        fmt = '{:.4f}'
-        logger.writerow({'epoch': epoch,
-                         'fval': fmt.format(l),
-                         'pct_err': fmt.format(t1),
-                         'train_fval': fmt.format(lt),
-                         'train_pct_err': fmt.format(t1t),
-                         'time': fmt.format(ttot)})
-
-    print('[Epoch %2d] Average test loss: %.3f, error: %.2f%%'
-          % (epoch, l, t1))
-    print('%28s: %.3f, error: %.2f%%\n'
-          % ('training loss', lt, t1t))
-
-    return test_loss.value()[0], top1.value()[0]
+    return loss_val
 
 
 def main():
-    # save_model_path = os.path.join(args.logdir, 'checkpoint.pth.tar')
-    # best_model_path = os.path.join(args.logdir, 'best.pth.tar')
+    best_loss = 10000.0
 
-    pct_max = 90.
-    fail_count = fail_max = 5
-    time = 0.
-    pct0 = 100.
-    for e in range(args.epochs):
+    for epoch in range(1, args.epochs + 1):
+        train(epoch)
+        test_loss = test()
 
-        # Update the learning rate
-        # schedule.step()
+        torch.save({'state_dict': model.state_dict()}, './runs/encoder_checkpoint.pth.tar')
 
-        time = train(e, time)
-
-        loss, pct_err = test(e, time)
-        if pct_err >= pct_max:
-            fail_count -= 1
-
-        torch.save({'ix': ix,
-                    'epoch': e + 1,
-                    'model': args.model,
-                    'state_dict': model.state_dict(),
-                    'pct_err': pct_err,
-                    'loss': loss
-                    }, save_model_path)
-        if pct_err < pct0:
-            shutil.copyfile(save_model_path, best_model_path)
-            pct0 = pct_err
-
-        if fail_count < 1:
-            raise ValueError('Percent error has not decreased in %d epochs' % fail_max)
+        if test_loss < best_loss:
+            shutil.copyfile('./runs/encoder_checkpoint.pth.tar', './runs/encoder_best.pth.tar')
+            best_loss = test_loss
 
 
 if __name__ == '__main__':
