@@ -350,7 +350,7 @@ def train(epoch):
                 lb = loss
             dl_xjs = (lf - lb) / H
 
-            dl = 0.5 * (dl_xis + dl_xjs)
+            dl = 0.5 * (dl_xis + dl_xjs)  # Mean of the 2 directional derivatives
 
         tik_penalty = torch.tensor(np.nan)
         dlmean = torch.tensor(np.nan)
