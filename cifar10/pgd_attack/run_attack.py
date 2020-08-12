@@ -1,5 +1,6 @@
 """ Attack a ResNet50 model with PGD on CIFAR10 """
 
+import warnings
 import argparse, yaml
 import os, sys, pathlib
 import ast
@@ -33,12 +34,12 @@ parser = argparse.ArgumentParser('Attack an example CIFAR10 example with L2PGD')
 parser.add_argument('--data-dir', type=str, default='/home/campus/oberman-lab/data/',
                     metavar='DIR', help='Directory where CIFAR10 data is saved')
 parser.add_argument('--model-path', type=str,
-                    default='/home/campus/dragos.manta/contrastive/ContrastiveTeamO/cifar10/runs3/encoder_best'
+                    default='/home/campus/dragos.manta/contrastive/ContrastiveTeamO/cifar10/runs/encoder_best'
                             '.pth.tar',
                     metavar='PATH',
                     help='path to the .pth.tar trained model file')
 parser.add_argument('--clf-path', type=str,
-                    default='/home/campus/dragos.manta/contrastive/ContrastiveTeamO/cifar10/runs3'
+                    default='/home/campus/dragos.manta/contrastive/ContrastiveTeamO/cifar10/runs'
                             '/classifier_best.pth.tar',
                     metavar='PATH',
                     help='path to the .pth.tar trained classifier file')
@@ -62,6 +63,10 @@ parser.add_argument('--model-args', type=str,
                     help='A dictionary of extra arguments passed to the model.'
                          ' (default: "{}")')
 
+# --------------------
+# Actual PGD parameters
+# --------------------
+
 parser.add_argument('--criterion', type=str, default='top1',
                     help='given a model and x, how to we estimate y?')
 parser.add_argument('--loss-function', type=str, default='KL',
@@ -79,6 +84,11 @@ parser.add_argument('--seed', type=int, default=0,
                     help='seed for RNG (default: 0)')
 parser.add_argument('--random-subset', action='store_true',
                     default=False, help='use random subset of test images (default: False)')
+
+# --------------------
+# More quantitative PGD parameters
+# --------------------
+warnings.warn("--alpha argument is not being used.")
 
 parser.add_argument('--eps', type=float, default=0.5,
                     help='max. allowed perturbation')

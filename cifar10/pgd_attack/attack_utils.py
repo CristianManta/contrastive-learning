@@ -32,7 +32,7 @@ def pgd_attack(model, clf, images, labels, loss_fn, criterion="top1", norm="L2",
         loss_fn -> use the same loss function that the model was trained on
         criterion -> the classification criterion
         norm -> in which norm are we attacking? (str)
-        eps -> the maximum allows pertubation in the given norm
+        eps -> the maximum allowed pertubation in the given norm
         alpha -> the PGD step-size
         iters -> the maximum number of perturbations"""
 
@@ -46,8 +46,11 @@ def pgd_attack(model, clf, images, labels, loss_fn, criterion="top1", norm="L2",
         delta = delta.cuda()
 
     # get batch size
-    sh = images.shape
+    sh = init_images.shape
+    # print(f"sh = {sh}\n")
     Nb = sh[0]
+    # print(f"Nb = {Nb}")
+    # print("\n")
 
     # feel free to comment the following out and set your own alpha
     # some people define alpha this way (e.g., Salman paper)
@@ -64,11 +67,16 @@ def pgd_attack(model, clf, images, labels, loss_fn, criterion="top1", norm="L2",
         output = clf(features)
         if criterion == "top1":
             pred_labels = top1(output)
-        ## TODO: add other classification criteria
+        # print(f"labels = {labels}")
+        # print("\n")
+        # print(f"pred_labels = {pred_labels}")
+        # print("\n")
+        # TODO: add other classification criteria
         corr = pred_labels == labels
+        # print(f"corr = {corr}\n")
 
         # exit attack if all images are misclassified
-        # print(corr.sum().item())
+        # print(f"corr.sum().item() = {corr.sum().item()}")
         if corr.sum() == 0:
             delta.detach_()
             break
@@ -76,21 +84,36 @@ def pgd_attack(model, clf, images, labels, loss_fn, criterion="top1", norm="L2",
         # perform PGD step on images that are not yet attacked
         model.zero_grad()
         loss = loss_fn(output, labels)
-        # print(loss)
+        # print(f"loss = {loss}")
         # exit()
-        ## TODO: add other loss functions (similarity)
+        # TODO: add other loss functions (similarity)
 
         if norm == "L2":
             gl = torch.autograd.grad(loss.sum(), delta, retain_graph=True)[0]
+            # print(f"gl.shape = {gl.shape}\n")
+            # print(f"gl = {gl}\n")
             gl = gl[corr]  # only want to perturb correctly classified images
+            # print(f"gl[corr] = {gl}")
+            # print(f"gl[corr].shape = {gl.shape}")
             gl_norm = gl.view(corr.sum(), -1).norm(p=2, dim=-1)
+            zer = torch.zeros(gl_norm.shape)
+            if has_cuda:
+                zer = zer.cuda()
+            gl_nonzero_norm_indices = gl_norm != zer
+            gl = gl[gl_nonzero_norm_indices]
+            gl_norm = gl_norm[gl_nonzero_norm_indices]
+            # print(f"gl after cutting out zero norms: {gl.shape}")
+            # print(f"gl_nonzero_norm_indices = {gl_nonzero_norm_indices}")
+            # print(f"gl_norm = {gl_norm}")
+            # print(f"gl_norm.shape = {gl_norm.shape}")
             gl_scaled = gl.div(
                 gl_norm.view(-1, 1, 1, 1))  # need to unsqueeze dimension of gl_norm so that division will work
+            # print(f"gl_norm.view(-1, 1, 1, 1) = {gl_norm.view(-1, 1, 1, 1)}")
 
-            # detatch from the computation graph to not accumulate gradients and to avoid 'in-place operation' errors
+            # detach from the computation graph to not accumulate gradients and to avoid 'in-place operation' errors
             delta.detach_()
 
-            delta[corr] = delta[corr] + alpha * gl_scaled
+            delta[corr and gl_nonzero_norm_indices] = delta[corr and gl_nonzero_norm_indices] + alpha * gl_scaled  # TODO: Continue debugging here. Need to make dimensions match
 
             # make sure adversarial images have pixel values in (0,1)
             delta.data.add_(init_images)
