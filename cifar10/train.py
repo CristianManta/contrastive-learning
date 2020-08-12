@@ -79,7 +79,7 @@ group0 = parser.add_argument_group('Optimizer hyperparameters')
 group0.add_argument('--batch-size', type=int, default=128, metavar='N',
                     help='Input batch size for training. (default: 128)')
 group0.add_argument('--lr', type=float, default=3e-4, metavar='LR',
-                    help='Initial step size. (default: 0.15)')
+                    help='Initial step size. (default: 3e-4)')
 group0.add_argument('--lr-schedule', type=str, metavar='[[epoch,ratio]]',
                     default='[[0,1],[30,0.2],[60,0.04],[80,0.008]]', help='List of epochs and multiplier '
                                                                           'for changing the learning rate (default: [[0,1],[30,0.2],[60,0.04],[80,0.008]]). ')

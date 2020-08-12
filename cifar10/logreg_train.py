@@ -37,14 +37,14 @@ from loss.nt_xent import NTXentLoss
 from custom_transforms import get_color_distortion, GaussianBlur
 
 parser = argparse.ArgumentParser('Use logistic regression to classify a contrastive learning model')
-parser.add_argument('--data-dir', type=str, default='/home/math/oberman-lab/data/', metavar='DIR',
+parser.add_argument('--data-dir', type=str, default='/home/campus/oberman-lab/data/', metavar='DIR',
                     help='Directory where CIFAR-10 data is saved')
 parser.add_argument('--seed', type=int, default=0, metavar='S',
                     help='random seed (default: 0)')
 parser.add_argument('--batch-size', type=int, default=128, metavar='N',
                     help='Input batch size for training. (default: 128)')
 parser.add_argument('--test-batch-size', type=int, default=100, metavar='N',
-                    help='input batch size for testing (default: 1000)')
+                    help='input batch size for testing (default: 100)')
 parser.add_argument('--num-train-images', type=int, default=50000, metavar='NI',
                     help='number of images to use in training (default=50000)')
 parser.add_argument('--num-test-images', type=int, default=10000, metavar='NI',
@@ -76,9 +76,12 @@ group1.add_argument('--model-args', type=str,
                     help='A dictionary of extra arguments passed to the model.'
                          ' (default: "{}")')
 
-parser.add_argument('--lr', type=float, default=0.8)
-parser.add_argument('--epochs', type=int, default=100)
-parser.add_argument('--decay', type=float, default=0.0)
+parser.add_argument('--lr', type=float, default=0.8,
+                    help='Starting learning rate of the classifier (default: 0.8)')
+parser.add_argument('--epochs', type=int, default=100,
+                    help='Number of training epochs (default: 100)')
+parser.add_argument('--decay', type=float, default=0.0,
+                    help='Weight decay (default: 0)')
 
 args = parser.parse_args()
 
