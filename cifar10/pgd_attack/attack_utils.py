@@ -1,8 +1,10 @@
 import torch
 import torch.nn.functional as F
 
+
 def top1(output):
     return output.argmax(dim=-1)
+
 
 def kl_div_loss(output, labels):
     output = F.softmax(output, dim=-1)
@@ -10,15 +12,17 @@ def kl_div_loss(output, labels):
     Ix = torch.arange(Nb)
     if output.is_cuda:
         Ix = Ix.cuda()
-    loss = -torch.log(output[Ix,labels])
+    loss = -torch.log(output[Ix, labels])
     return loss
 
+
 def cw_loss(output, y):
-    Ix = torch.arange(output.shape[0],device=output.device)
+    Ix = torch.arange(output.shape[0], device=output.device)
     p = output.softmax(dim=-1)
     pc = p.clone()
-    pc[Ix,y] = 0.0
-    return (p[Ix,y] - pc.max(dim=-1)[0]).clamp(min=0.0)
+    pc[Ix, y] = 0.0
+    return (p[Ix, y] - pc.max(dim=-1)[0]).clamp(min=0.0)
+
 
 def pgd_attack(model, clf, images, labels, loss_fn, criterion="top1", norm="L2", eps=0.5, alpha=0.1, iters=20):
     """ BATCH-WISE PGD
@@ -47,7 +51,7 @@ def pgd_attack(model, clf, images, labels, loss_fn, criterion="top1", norm="L2",
 
     # feel free to comment the following out and set your own alpha
     # some people define alpha this way (e.g., Salman paper)
-    alpha = eps/iters*2
+    alpha = eps / iters * 2
 
     # perform the iterative attack until maximum iterations are reached OR until all images are misclassified
     for i in range(iters):
@@ -58,13 +62,13 @@ def pgd_attack(model, clf, images, labels, loss_fn, criterion="top1", norm="L2",
         # see which images are still correctly classified
         features, _ = model(input)
         output = clf(features)
-        if criterion=="top1":
+        if criterion == "top1":
             pred_labels = top1(output)
         ## TODO: add other classification criteria
         corr = pred_labels == labels
 
         # exit attack if all images are misclassified
-        #print(corr.sum().item())
+        # print(corr.sum().item())
         if corr.sum() == 0:
             delta.detach_()
             break
@@ -72,20 +76,21 @@ def pgd_attack(model, clf, images, labels, loss_fn, criterion="top1", norm="L2",
         # perform PGD step on images that are not yet attacked
         model.zero_grad()
         loss = loss_fn(output, labels)
-        #print(loss)
-        #exit()
+        # print(loss)
+        # exit()
         ## TODO: add other loss functions (similarity)
 
-        if norm=="L2":
-            gl = torch.autograd.grad(loss.sum(),delta,retain_graph=True)[0]
+        if norm == "L2":
+            gl = torch.autograd.grad(loss.sum(), delta, retain_graph=True)[0]
             gl = gl[corr]  # only want to perturb correctly classified images
-            gl_norm = gl.view(corr.sum(),-1).norm(p=2,dim=-1)
-            gl_scaled = gl.div(gl_norm.view(-1,1,1,1))  # need to unsqueeze dimension of gl_norm so that division will work
+            gl_norm = gl.view(corr.sum(), -1).norm(p=2, dim=-1)
+            gl_scaled = gl.div(
+                gl_norm.view(-1, 1, 1, 1))  # need to unsqueeze dimension of gl_norm so that division will work
 
             # detatch from the computation graph to not accumulate gradients and to avoid 'in-place operation' errors
             delta.detach_()
 
-            delta[corr] = delta[corr] + alpha*gl_scaled
+            delta[corr] = delta[corr] + alpha * gl_scaled
 
             # make sure adversarial images have pixel values in (0,1)
             delta.data.add_(init_images)
@@ -97,12 +102,12 @@ def pgd_attack(model, clf, images, labels, loss_fn, criterion="top1", norm="L2",
         ## TODO: add the L1 and Linf version
 
         ## detatch from the computation graph to not accumulate gradients (is this necessary?)
-        #delta.detach_()
+        # delta.detach_()
 
     # if unable to attack after max_iters, put adversarial distance to zero
     features, _ = model(init_images + delta)
     output = clf(features)
-    if criterion=="top1":
+    if criterion == "top1":
         pred_labels = top1(output)
     corr = pred_labels == labels
     delta[corr] = torch.zeros(corr.sum(), *sh[1:]).cuda()
