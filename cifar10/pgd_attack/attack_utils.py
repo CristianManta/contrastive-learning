@@ -99,11 +99,11 @@ def pgd_attack(model, clf, images, labels, loss_fn, criterion="top1", norm="L2",
             zer = torch.zeros(gl_norm.shape)
             if has_cuda:
                 zer = zer.cuda()
-            gl_nonzero_norm_indices = gl_norm != zer
-            gl = gl[gl_nonzero_norm_indices]
-            gl_norm = gl_norm[gl_nonzero_norm_indices]
+            gl_nonzero_norm_bool = gl_norm != zer
+            gl = gl[gl_nonzero_norm_bool]
+            gl_norm = gl_norm[gl_nonzero_norm_bool]
             # print(f"gl after cutting out zero norms: {gl.shape}")
-            # print(f"gl_nonzero_norm_indices = {gl_nonzero_norm_indices}")
+            # print(f"gl_nonzero_norm_bool = {gl_nonzero_norm_bool}")
             # print(f"gl_norm = {gl_norm}")
             # print(f"gl_norm.shape = {gl_norm.shape}")
             gl_scaled = gl.div(
@@ -112,8 +112,13 @@ def pgd_attack(model, clf, images, labels, loss_fn, criterion="top1", norm="L2",
 
             # detach from the computation graph to not accumulate gradients and to avoid 'in-place operation' errors
             delta.detach_()
+            gl_nonzero_norm_bool_pad = torch.zeros(Nb, dtype=torch.bool)
+            if has_cuda:
+                gl_nonzero_norm_bool_pad = gl_nonzero_norm_bool_pad.cuda()
+            for j in range(gl_nonzero_norm_bool.shape[0]):
+                gl_nonzero_norm_bool_pad[j] = gl_nonzero_norm_bool[j]
 
-            delta[corr and gl_nonzero_norm_indices] = delta[corr and gl_nonzero_norm_indices] + alpha * gl_scaled  # TODO: Continue debugging here. Need to make dimensions match
+            delta[gl_nonzero_norm_bool_pad] = delta[gl_nonzero_norm_bool_pad] + alpha * gl_scaled
 
             # make sure adversarial images have pixel values in (0,1)
             delta.data.add_(init_images)
@@ -122,9 +127,9 @@ def pgd_attack(model, clf, images, labels, loss_fn, criterion="top1", norm="L2",
             # clamp the L2-norm of the perturbation to the specified max
             delta.data.renorm_(p=2, dim=0, maxnorm=eps)
 
-        ## TODO: add the L1 and Linf version
+        # TODO: add the L1 and Linf version
 
-        ## detatch from the computation graph to not accumulate gradients (is this necessary?)
+        # detatch from the computation graph to not accumulate gradients (is this necessary?)
         # delta.detach_()
 
     # if unable to attack after max_iters, put adversarial distance to zero
