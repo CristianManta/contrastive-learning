@@ -32,7 +32,7 @@ import models.cifar as cifarmodels
 from loss.nt_xent import NTXentLoss
 
 parser = argparse.ArgumentParser('contrastive learning training on CIFAR-10')
-parser.add_argument('--data-dir', type=str, default='/home/campus/oberman-lab/data/', metavar='DIR',
+parser.add_argument('--data-dir', type=str, default='/home/math/oberman-lab/data/', metavar='DIR',
                     help='Directory where CIFAR-10 data is saved')
 parser.add_argument('--seed', type=int, default=0, metavar='S',
                     help='random seed (default: 0)')
@@ -107,8 +107,8 @@ for p in vars(args).items():
 print('\n')
 
 # Create logging directory
-if not os.path.exists('./runs'):
-    os.makedirs('./runs')
+if not os.path.exists('./runs_LW'):
+    os.makedirs('./runs_LW')
 
 # Get Train and Test Loaders
 root = os.path.join(args.data_dir, 'cifar10')
@@ -200,6 +200,37 @@ if has_cuda:
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
 
+
+# -> Get self.layers attribute of the resnet (see resnet.py) and iterate on it in a double for loop (since elements
+# themselves are nn.Sequential)
+
+# class ModelDissector:
+#     def __init__(self, model):
+#         self.model = model
+
+def evaluate(m, x):
+    h = m.module.layer0(x)
+    if m.module.maxpool:
+        h = m.module.maxpool(h)
+    # layernb = 0
+    for layer in m.module.layers:
+        # layernb += 1
+        # print(f"layer # {layernb}")
+        # sub_layernb = 0
+        for sub_layer in layer:
+            # sub_layernb += 1
+            # print(f"sub_layer # {sub_layernb}")
+            h = sub_layer(h)
+    h = m.module.pool(h)
+    h = m.module.view(h)
+
+    x = m.module.l1(h)
+    x = F.relu(x)
+    x = m.module.l2(x)
+
+    return h, x
+
+
 # Set Optimizer and learning rate schedule
 optimizer = torch.optim.Adam(model.parameters(), args.lr, weight_decay=args.decay)
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=len(train_loader), eta_min=0,
@@ -245,8 +276,8 @@ def train(epoch):
             xis.requires_grad_(True)
             xjs.requires_grad_(True)
 
-        his, zis = model(xis)
-        hjs, zjs = model(xjs)
+        his, zis = evaluate(model, xis)
+        hjs, zjs = evaluate(model, xjs)
 
         zis = F.normalize(zis, dim=1)
         zjs = F.normalize(zjs, dim=1)
@@ -314,13 +345,13 @@ def train(epoch):
             # First getting the approximation of the directional derivative if we perturbe the xis
             xf_xis = xis + h * v_xis
 
-            _, mf_zis = model(xf_xis)
+            _, mf_zis = evaluate(model, xf_xis)
             mf_zis = F.normalize(mf_zis, dim=1)
 
             lf = nt_xent_criterion(mf_zis, zjs)
             if args.fd_order == 'O2':
                 xb_xis = xis - h * v_xis
-                _, mb_zis = model(xb_xis)
+                _, mb_zis = evaluate(model, xb_xis)
                 mb_zis = F.normalize(mb_zis, dim=1)
 
                 lb = nt_xent_criterion(mb_zis, zjs)
@@ -334,13 +365,13 @@ def train(epoch):
             # Now getting the approximation of the directional derivative if we perturbe the xjs
             xf_xjs = xjs + h * v_xjs
 
-            _, mf_zjs = model(xf_xjs)
+            _, mf_zjs = evaluate(model, xf_xjs)
             mf_zjs = F.normalize(mf_zjs, dim=1)
 
             lf = nt_xent_criterion(zis, mf_zjs)
             if args.fd_order == 'O2':
                 xb_xjs = xjs - h * v_xjs
-                _, mb_zjs = model(xb_xjs)
+                _, mb_zjs = evaluate(model, xb_xjs)
                 mb_zjs = F.normalize(mb_zjs, dim=1)
 
                 lb = nt_xent_criterion(zis, mb_zjs)
@@ -393,8 +424,8 @@ def test():
             if has_cuda:
                 xis, xjs = xis.cuda(), xjs.cuda()
 
-            his, zis = model(xis)
-            hjs, zjs = model(xjs)
+            his, zis = evaluate(model, xis)
+            hjs, zjs = evaluate(model, xjs)
 
             zis = F.normalize(zis, dim=1)
             zjs = F.normalize(zjs, dim=1)
@@ -415,10 +446,10 @@ def main():
         train(epoch)
         test_loss = test()
 
-        torch.save({'state_dict': model.state_dict()}, './runs/encoder_checkpoint.pth.tar')
+        torch.save({'state_dict': model.state_dict()}, './runs_LW/encoder_checkpoint.pth.tar')
 
         if test_loss < best_loss:
-            shutil.copyfile('./runs/encoder_checkpoint.pth.tar', './runs/encoder_best.pth.tar')
+            shutil.copyfile('./runs_LW/encoder_checkpoint.pth.tar', './runs_LW/encoder_best.pth.tar')
             best_loss = test_loss
 
 

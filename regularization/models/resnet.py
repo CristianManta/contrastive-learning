@@ -11,68 +11,66 @@ from .blocks import Conv, Linear
 class ResNet(nn.Module):
 
     def __init__(self, layers, block='BasicBlock', in_channels=3,
-                 classes=10, kernel_size=(3,3),  nonlinear='relu',
-                 conv0_kwargs = {'kernel_size':(3,3), 'stride':1},
-                 conv0_pool=None, downsample_pool=nn.AvgPool2d, dropout = 0.,
+                 classes=10, kernel_size=(3, 3), nonlinear='relu',
+                 conv0_kwargs={'kernel_size': (3, 3), 'stride': 1},
+                 conv0_pool=None, downsample_pool=nn.AvgPool2d, dropout=0.,
                  last_layer_nonlinear=False, last_layer_bn=None,
                  softmax=False, bn=True, base_channels=16, **kwargs):
         if last_layer_bn is None:
-            last_layer_bn=bn
+            last_layer_bn = bn
 
         super().__init__()
         kernel_size = _pair(kernel_size)
 
         def make_layer(n, block, in_channels, out_channels, stride):
             sublayers = []
-            if not in_channels==out_channels:
-                sublayers.append(Conv(in_channels, out_channels, kernel_size=(1,1), dropout=dropout,
-                    nonlinear=nonlinear, bn=bn))
+            if not in_channels == out_channels:
+                sublayers.append(Conv(in_channels, out_channels, kernel_size=(1, 1), dropout=dropout,
+                                      nonlinear=nonlinear, bn=bn))
 
-            if stride>1:
+            if stride > 1:
                 sublayers.append(downsample_pool(stride))
 
             for k in range(n):
                 sublayers.append(block(out_channels, kernel_size=kernel_size,
-                    bn=bn, nonlinear=nonlinear, dropout = dropout, **kwargs))
+                                       bn=bn, nonlinear=nonlinear, dropout=dropout, **kwargs))
 
             return nn.Sequential(*sublayers)
-
 
         block = getattr(blocks, block)
 
         self.layer0 = Conv(in_channels, base_channels, **conv0_kwargs,
-                bn=bn, nonlinear=nonlinear, dropout=dropout)
+                           bn=bn, nonlinear=nonlinear, dropout=dropout)
 
         if conv0_pool:
             self.maxpool = conv0_pool
         else:
             self.maxpool = False
 
-
         _layers = []
         for i, n in enumerate(layers):
 
-            if i==0:
+            if i == 0:
                 _layers.append(make_layer(n, block, base_channels,
-                    base_channels, 1))
+                                          base_channels, 1))
             else:
-                _layers.append(make_layer(n, block, base_channels*(2**(i-1)),
-                    base_channels*(2**i), 2))
+                _layers.append(make_layer(n, block, base_channels * (2 ** (i - 1)),
+                                          base_channels * (2 ** i), 2))
 
         self.layers = nn.Sequential(*_layers)
 
         self.pool = Avg2d()
-        self.view = View((2**i)*base_channels)
+        self.view = View((2 ** i) * base_channels)
 
-        if dropout>0.:
+        if dropout > 0.:
             self.dropout = nn.Dropout(p=dropout)
         else:
             self.dropout = False
 
-        #self.fc = Linear((2**i)*base_channels, classes, nonlinear=last_layer_nonlinear, bn=last_layer_bn)
+        # self.fc = Linear((2**i)*base_channels, classes, nonlinear=last_layer_nonlinear, bn=last_layer_bn)
 
-        self.nonlinear=nonlinear
-        #self.softmax = softmax
+        self.nonlinear = nonlinear
+        # self.softmax = softmax
         self.bn = bn  # this is where batch norm is executed, a boolean
 
         # projection MLP
@@ -89,7 +87,7 @@ class ResNet(nn.Module):
                         l.fuse_bn()
                     except AttributeError as e:
                         pass
-            self.bn=False
+            self.bn = False
 
     def normalize(self):
         self.fc.normalize()
@@ -105,7 +103,6 @@ class ResNet(nn.Module):
     def num_parameters(self):
         return sum([w.numel() for w in self.parameters()])
 
-
     def forward(self, x):
         h = self.layer0(x)
         if self.maxpool:
@@ -113,11 +110,11 @@ class ResNet(nn.Module):
         h = self.layers(h)
         h = self.pool(h)
         h = self.view(h)
-        #if self.dropout:
+        # if self.dropout:
         #    x = self.dropout(x)
-        #x = self.fc(x)
+        # x = self.fc(x)
 
-        #if self.softmax:
+        # if self.softmax:
         #    x = x.softmax(dim=-1)
 
         x = self.l1(h)
@@ -125,5 +122,3 @@ class ResNet(nn.Module):
         x = self.l2(x)
 
         return h, x
-
-
