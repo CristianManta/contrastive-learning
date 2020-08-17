@@ -1,10 +1,4 @@
-""" training a contrastive learning model on CIFAR-10.
- Optimizer-related arguments not used yet as parameters:
- --> lr-schedule
- --> momentum"""
-
-import argparse
-import os, shutil, sys, pathlib
+import os, sys, pathlib, shutil
 
 _pth = str(pathlib.Path(__file__).absolute())
 for i in range(2):
@@ -13,34 +7,26 @@ sys.path.insert(0, _pth)  # I just made sure that the root of the project (Contr
 # looks for packages in order to import from files that require going several levels up from the directory where this
 # script is. Unfortunately, by default Python doesn't allow imports from above the current file directory.
 
-
-import yaml
-import numpy as np
-import random
-import ast, bisect
-from statistics import mean
-
+import argparse
 import torch
 import torch.nn as nn
 import torch.backends.cudnn as cudnn
-import torch.nn.functional as F
 from torch import optim
-from torch.optim.lr_scheduler import LambdaLR
-import torchnet as tnt
 
-import torchvision
-import torchvision.transforms as transforms
+import torchvision.models as models
 from torchvision.datasets import CIFAR10
-from torch.utils.data.sampler import SubsetRandomSampler
+import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
+from torch.utils.data.sampler import SubsetRandomSampler
 
-import models.cifar as cifarmodels
-from loss.nt_xent import NTXentLoss
+from statistics import mean
+import numpy as np
+import ast
 
-from transformations.custom_transforms import get_color_distortion, GaussianBlur
+import baseline_models.cifar as cifarmodels
 
 parser = argparse.ArgumentParser('contrastive learning training on CIFAR-10')
-parser.add_argument('--data-dir', type=str, default='/home/campus/oberman-lab/data/', metavar='DIR',
+parser.add_argument('--data-dir', type=str, default='/home/math/oberman-lab/data/', metavar='DIR',
                     help='Directory where CIFAR-10 data is saved')
 parser.add_argument('--seed', type=int, default=0, metavar='S',
                     help='random seed (default: 0)')
@@ -93,9 +79,8 @@ group2.add_argument('--decay', type=float, default=1e-5, metavar='L',
 
 args = parser.parse_args()
 
-if not os.path.exists('./runs'):
-    os.makedirs('./runs')
-
+if not os.path.exists('./runs_baseline'):
+    os.makedirs('./runs_baseline')
 
 # CUDA info
 has_cuda = torch.cuda.is_available()
@@ -111,36 +96,11 @@ for p in vars(args).items():
     print('  ', p[0] + ': ', p[1])
 print('\n')
 
-# Set and create logging directory
-# if args.logdir is None:
-#    args.logdir = os.path.join('./logs/',args.dataset,args.model,
-#            '{0:%Y-%m-%dT%H%M%S}'.format(datetime.datetime.now()))
-# os.makedirs(args.logdir, exist_ok=True)
+# Get data
+root = '/home/math/oberman-lab/data/cifar10'
 
-# Get Train and Test Loaders
-# Do 3 deparate train loaders, one with each data augmentation
-root = os.path.join(args.data_dir, 'cifar10')
-
-
-class SimCLRDataTransform(object):
-    def __init__(self, transform):
-        self.transform = transform
-
-    def __call__(self, sample):
-        xi = self.transform(sample)
-        xj = self.transform(sample)
-        return xi, xj
-
-
-color_jitter = transforms.ColorJitter(0.8, 0.8, 0.8, 0.2)
-
-data_transforms = transforms.Compose([transforms.RandomResizedCrop(size=32),
-                                      transforms.RandomHorizontalFlip(),
-                                      get_color_distortion(s=1.0),
-                                      transforms.ToTensor()])
-
-data_augment = data_transforms
-ds_train = CIFAR10(root, download=True, train=True, transform=SimCLRDataTransform(data_augment))
+ds_train = CIFAR10(root, download=True, train=True, transform=transforms.ToTensor())
+ds_test = CIFAR10(root, download=True, train=False, transform=transforms.ToTensor())
 
 num_train = len(ds_train)
 indices = list(range(num_train))
@@ -153,10 +113,9 @@ train_idx, valid_idx = indices[split:], indices[:split]
 train_sampler = SubsetRandomSampler(train_idx)
 valid_sampler = SubsetRandomSampler(valid_idx)
 
-train_loader = DataLoader(ds_train, batch_size=args.batch_size, sampler=train_sampler,
-                          num_workers=4, drop_last=True, shuffle=False)
-valid_loader = DataLoader(ds_train, batch_size=args.batch_size, sampler=valid_sampler,
-                          num_workers=4, drop_last=True)
+train_loader = DataLoader(ds_train, batch_size=128, num_workers=4, drop_last=True, sampler=train_sampler)
+valid_loader = DataLoader(ds_train, batch_size=128, num_workers=4, drop_last=True, sampler=valid_sampler)
+test_loader = DataLoader(ds_test, batch_size=128, num_workers=4, drop_last=True)
 
 # initialize model and move it the GPU (if available)
 classes = 10
@@ -167,14 +126,12 @@ model_args.update(bn=args.bn, classes=classes, bias=args.bias,
                   in_channels=in_channels,
                   softmax=False, last_layer_nonlinear=args.last_layer_nonlinear,
                   dropout=args.dropout)
-model = getattr(cifarmodels, args.model)(**model_args)
+model = getattr(cifarmodels, 'ResNet50')(**model_args)
 
 if has_cuda:
     model = model.cuda()
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
-
-# print(model)
 
 # Set Optimizer and learning rate schedule
 optimizer = torch.optim.Adam(model.parameters(), args.lr, weight_decay=args.decay)
@@ -183,8 +140,7 @@ scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=len(trai
 # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 20, gamma=0.1, last_epoch=-1)
 
 # define loss
-nt_xent_criterion = NTXentLoss(device=torch.cuda.current_device(), batch_size=args.batch_size, temperature=0.5,
-                               use_cosine_similarity=True)
+criterion = nn.CrossEntropyLoss()
 
 
 # training code
@@ -194,21 +150,16 @@ def train(epoch):
     batch_ix = 0
 
     print("Current LR: {}".format(scheduler.get_lr()[0]))
-    for (xis, xjs), y in train_loader:
+    for (x, y) in train_loader:
 
         if has_cuda:
-            xis, xjs = xis.cuda(), xjs.cuda()
+            x, y = x.cuda(), y.cuda()
 
         optimizer.zero_grad()
 
-        his, zis = model(xis)
-        hjs, zjs = model(xjs)
+        outputs = model(x)
 
-        # normalize projection feature vectors
-        zis = F.normalize(zis, dim=1)
-        zjs = F.normalize(zjs, dim=1)
-
-        loss = nt_xent_criterion(zis, zjs)
+        loss = criterion(outputs, y)
 
         loss.backward()
         optimizer.step()
@@ -224,31 +175,62 @@ def train(epoch):
         scheduler.step()
 
 
-def test():
+def validate():
     model.eval()
 
     loss_vals = []
 
+    correct = 0
+    total = 0
+
     with torch.no_grad():
 
-        for (xis, xjs), y in valid_loader:
+        for (x, y) in valid_loader:
 
             if has_cuda:
-                xis, xjs = xis.cuda(), xjs.cuda()
+                x, y = x.cuda(), y.cuda()
 
-            his, zis = model(xis)
-            hjs, zjs = model(xjs)
+            Nb = x.shape[0]
 
-            zis = F.normalize(zis, dim=1)
-            zjs = F.normalize(zjs, dim=1)
+            outputs = model(x)
+            predicted = torch.argmax(outputs, dim=1)
+            total += Nb
+            correct += (predicted == y).sum().item()
 
-            loss = nt_xent_criterion(zis, zjs)
+            loss = criterion(outputs, y)
             loss_vals.append(loss.data.item())
 
     loss_val = mean(loss_vals)
-    print('Avg. test loss: %.3g \n' % (loss_val))
+    acc = 100 * correct / total
+    print('Avg. test loss: %.3g \n' % loss_val)
+    print('Accuracy on the validation set: %.3g \n' % acc)
 
     return loss_val
+
+
+def test():
+    model.eval()
+
+    correct = 0
+    total = 0
+
+    with torch.no_grad():
+
+        for (x, y) in test_loader:
+
+            if has_cuda:
+                x, y = x.cuda(), y.cuda()
+
+            Nb = x.shape[0]
+
+            outputs = model(x)
+            predicted = torch.argmax(outputs, dim=1)
+            total += Nb
+            correct += (predicted == y).sum().item()
+
+    acc = 100 * correct / total
+
+    print('Final accuracy on the test set: %.3g \n' % acc)
 
 
 def main():
@@ -256,13 +238,15 @@ def main():
 
     for epoch in range(1, args.epochs + 1):
         train(epoch)
-        test_loss = test()
+        val_loss = validate()
 
-        torch.save({'state_dict': model.state_dict()}, './runs/encoder_checkpoint.pth.tar')
+        torch.save({'state_dict': model.state_dict()}, './runs_baseline/checkpoint.pth.tar')
 
-        if test_loss < best_loss:
-            shutil.copyfile('./runs/encoder_checkpoint.pth.tar', './runs/encoder_best.pth.tar')
-            best_loss = test_loss
+        if val_loss < best_loss:
+            shutil.copyfile('./runs_baseline/checkpoint.pth.tar', './runs_baseline/best.pth.tar')
+            best_loss = val_loss
+
+    test()
 
 
 if __name__ == "__main__":
