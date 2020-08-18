@@ -3,11 +3,11 @@
 ## A place to push new ideas for Contrastive Learning
 
 
-## Summary of comparisons between the baseline ResNet50 and our contrastive model
+## Comparisons between the baseline ResNet50 and our contrastive model on CIFAR-10
 
 ## Accuracy 
 
-|   pct. of labels available    | Baseline acc.   | Contrastive acc.  |
+|   pct. of labels available    | Baseline   | Contrastive  |
 | ------------- |:-------------:| -----:|
 | 100%      | 80% | 74.79% |
 | 10%      | 55.3%      |   70.83% |
@@ -34,6 +34,12 @@ pgd | 0.0868      | 0.0355 | 0.0627 |
 ---- | ------------- |:-------------:| -----:|
 pgd | 0.5      | 0.5 | 0.5 |
 plb | 0.699      | 0.122      |   nan (?!) |
+
+### Accuracy Claims from [a Simple Framework for Contrastive Learning of Visual Representations](https://arxiv.org/pdf/2002.05709.pdf)
+| Baseline | Contrastive |
+| -------- | -------- |
+| 93.6%    | 90.6%    |
+
 
 
 
