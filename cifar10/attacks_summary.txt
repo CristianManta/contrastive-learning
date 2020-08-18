@@ -1,0 +1,30 @@
+--------------- PGD section -------------------
+
+baseline model:
+    median: 0
+    mean: 0.0868
+    max: 0.5
+
+unregularized contrastive model:
+    median: 0
+    mean: 0.0355
+    max: 0.5
+
+regularized contrastive model:
+    median: 0
+    mean: 0.0627
+    max: 0.5
+
+--------------- PLB section -------------------
+
+baseline model:
+    median: 0.118
+    max: 0.699
+
+unregularized contrastive model:
+    median: 0.12
+    max: 1.22
+
+regularized contrastive model:
+    median: 0.185
+    max: nan
