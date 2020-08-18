@@ -32,7 +32,7 @@ import models.cifar as cifarmodels
 from loss.nt_xent import NTXentLoss
 
 parser = argparse.ArgumentParser('contrastive learning training on CIFAR-10')
-parser.add_argument('--data-dir', type=str, default='/home/campus/oberman-lab/data/', metavar='DIR',
+parser.add_argument('--data-dir', type=str, default='/home/math/oberman-lab/data/', metavar='DIR',
                     help='Directory where CIFAR-10 data is saved')
 parser.add_argument('--seed', type=int, default=0, metavar='S',
                     help='random seed (default: 0)')
