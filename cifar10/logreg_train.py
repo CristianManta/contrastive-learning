@@ -50,7 +50,7 @@ parser.add_argument('--num-train-images', type=int, default=50000, metavar='NI',
 parser.add_argument('--num-test-images', type=int, default=10000, metavar='NI',
                     help='number of test images to classify (default=10000)')
 parser.add_argument('--random-subset', action='store_true',
-                    default=False, help='use random subset of test images (default: False)')
+                    default=False, help='use random subset of train and test images (default: False)')
 
 group1 = parser.add_argument_group('Model hyperparameters')
 group1.add_argument('--model', type=str, default='ResNet50',
@@ -275,10 +275,10 @@ def main():
         train(epoch)
         test_loss, test_acc = test()
 
-        torch.save({'state_dict': clf.state_dict()}, './runs/classifier_checkpoint.pth.tar')
+        torch.save({'state_dict': clf.state_dict()}, './runs_500/classifier_checkpoint.pth.tar')
 
         if test_acc > best_acc:
-            shutil.copyfile('./runs/classifier_checkpoint.pth.tar', './runs/classifier_best.pth.tar')
+            shutil.copyfile('./runs_500/classifier_checkpoint.pth.tar', './runs_500/classifier_best.pth.tar')
             best_acc = test_acc
 
 

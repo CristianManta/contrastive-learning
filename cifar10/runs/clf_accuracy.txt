@@ -1,0 +1,5 @@
+        test loss: 0.719
+        test acc : 74.790
+
+The default parameters of the encoder and classifier training scripts on CIFAR
+were set so that running them out of the box yields the above mentioned accuracy

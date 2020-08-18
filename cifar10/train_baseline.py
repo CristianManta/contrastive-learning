@@ -18,6 +18,7 @@ from torchvision.datasets import CIFAR10
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler
+from torch.utils.data import Subset
 
 from statistics import mean
 import numpy as np
@@ -36,6 +37,13 @@ parser.add_argument('--epochs', type=int, default=100, metavar='N',
 #        help='how many batches to wait before logging training status (default: 100)')
 # parser.add_argument('--logdir', type=str, default=None,metavar='DIR',
 #        help='directory for outputting log files. (default: ./logs/DATASET/MODEL/TIMESTAMP/)')
+
+parser.add_argument('--num-train-images', type=int, default=50000, metavar='NI',
+                    help='number of images to use in training (default=50000)')
+parser.add_argument('--num-test-images', type=int, default=10000, metavar='NI',
+                    help='number of test images to classify (default=10000)')
+parser.add_argument('--random-subset', action='store_true',
+                    default=False, help='use random subset of train and test images (default: False)')
 
 group1 = parser.add_argument_group('Model hyperparameters')
 group1.add_argument('--model', type=str, default='ResNet50',
@@ -79,8 +87,8 @@ group2.add_argument('--decay', type=float, default=1e-5, metavar='L',
 
 args = parser.parse_args()
 
-if not os.path.exists('./runs_baseline'):
-    os.makedirs('./runs_baseline')
+if not os.path.exists('./runs_baseline_500'):
+    os.makedirs('./runs_baseline_500')
 
 # CUDA info
 has_cuda = torch.cuda.is_available()
@@ -100,22 +108,34 @@ print('\n')
 root = '/home/math/oberman-lab/data/cifar10'
 
 ds_train = CIFAR10(root, download=True, train=True, transform=transforms.ToTensor())
+if args.num_train_images > 50000:
+    args.num_train_images = 50000
+if args.random_subset:
+    Ix = np.random.choice(50000, size=args.num_train_images, replace=False)
+    Ix = torch.from_numpy(Ix)
+else:
+    Ix = torch.arange(args.num_train_images)  # Use the first N images of test set
+subset = Subset(ds_train, Ix)
+num_train = args.num_train_images
+train_loader = torch.utils.data.DataLoader(
+    subset,
+    batch_size=args.batch_size, shuffle=True,
+    num_workers=4, pin_memory=True, drop_last=True)
+
 ds_test = CIFAR10(root, download=True, train=False, transform=transforms.ToTensor())
-
-num_train = len(ds_train)
-indices = list(range(num_train))
-np.random.shuffle(indices)
-
-valid_size = 0.05
-split = int(np.floor(valid_size * num_train))
-train_idx, valid_idx = indices[split:], indices[:split]
-
-train_sampler = SubsetRandomSampler(train_idx)
-valid_sampler = SubsetRandomSampler(valid_idx)
-
-train_loader = DataLoader(ds_train, batch_size=128, num_workers=4, drop_last=True, sampler=train_sampler)
-valid_loader = DataLoader(ds_train, batch_size=128, num_workers=4, drop_last=True, sampler=valid_sampler)
-test_loader = DataLoader(ds_test, batch_size=128, num_workers=4, drop_last=True)
+if args.num_test_images > 10000:
+    args.num_test_images = 10000
+if args.random_subset:
+    Ix = np.random.choice(10000, size=args.num_test_images, replace=False)
+    Ix = torch.from_numpy(Ix)
+else:
+    Ix = torch.arange(args.num_test_images)  # Use the first N images of test set
+subset = Subset(ds_test, Ix)
+num_test = args.num_test_images
+test_loader = torch.utils.data.DataLoader(
+    subset,
+    batch_size=args.batch_size, shuffle=False,
+    num_workers=4, pin_memory=True, drop_last=True)
 
 # initialize model and move it the GPU (if available)
 classes = 10
@@ -175,39 +195,6 @@ def train(epoch):
         scheduler.step()
 
 
-def validate():
-    model.eval()
-
-    loss_vals = []
-
-    correct = 0
-    total = 0
-
-    with torch.no_grad():
-
-        for (x, y) in valid_loader:
-
-            if has_cuda:
-                x, y = x.cuda(), y.cuda()
-
-            Nb = x.shape[0]
-
-            outputs = model(x)
-            predicted = torch.argmax(outputs, dim=1)
-            total += Nb
-            correct += (predicted == y).sum().item()
-
-            loss = criterion(outputs, y)
-            loss_vals.append(loss.data.item())
-
-    loss_val = mean(loss_vals)
-    acc = 100 * correct / total
-    print('Avg. test loss: %.3g \n' % loss_val)
-    print('Accuracy on the validation set: %.3g \n' % acc)
-
-    return loss_val
-
-
 def test():
     model.eval()
 
@@ -229,24 +216,48 @@ def test():
             correct += (predicted == y).sum().item()
 
     acc = 100 * correct / total
+    print('Accuracy on the test set: %.3g \n' % acc)
 
-    print('Final accuracy on the test set: %.3g \n' % acc)
+    return acc
+
+
+# def test():
+#     model.eval()
+#
+#     correct = 0
+#     total = 0
+#
+#     with torch.no_grad():
+#
+#         for (x, y) in test_loader:
+#
+#             if has_cuda:
+#                 x, y = x.cuda(), y.cuda()
+#
+#             Nb = x.shape[0]
+#
+#             outputs = model(x)
+#             predicted = torch.argmax(outputs, dim=1)
+#             total += Nb
+#             correct += (predicted == y).sum().item()
+#
+#     acc = 100 * correct / total
+#
+#     print('Final accuracy on the test set: %.3g \n' % acc)
 
 
 def main():
-    best_loss = 10000.0
+    best_acc = 0
 
     for epoch in range(1, args.epochs + 1):
         train(epoch)
-        val_loss = validate()
+        acc = test()
 
-        torch.save({'state_dict': model.state_dict()}, './runs_baseline/checkpoint.pth.tar')
+        torch.save({'state_dict': model.state_dict()}, './runs_baseline_500/checkpoint.pth.tar')
 
-        if val_loss < best_loss:
-            shutil.copyfile('./runs_baseline/checkpoint.pth.tar', './runs_baseline/best.pth.tar')
-            best_loss = val_loss
-
-    test()
+        if acc > best_acc:
+            shutil.copyfile('./runs_baseline_500/checkpoint.pth.tar', './runs_baseline_500/best.pth.tar')
+            best_acc = acc
 
 
 if __name__ == "__main__":
