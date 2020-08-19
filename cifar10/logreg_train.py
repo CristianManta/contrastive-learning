@@ -275,10 +275,10 @@ def main():
         train(epoch)
         test_loss, test_acc = test()
 
-        torch.save({'state_dict': clf.state_dict()}, './runs_500/classifier_checkpoint.pth.tar')
+        torch.save({'state_dict': clf.state_dict()}, './runs/classifier_checkpoint.pth.tar')
 
         if test_acc > best_acc:
-            shutil.copyfile('./runs_500/classifier_checkpoint.pth.tar', './runs_500/classifier_best.pth.tar')
+            shutil.copyfile('./runs/classifier_checkpoint.pth.tar', './runs/classifier_best.pth.tar')
             best_acc = test_acc
 
 
