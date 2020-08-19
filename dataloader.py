@@ -242,7 +242,7 @@ def cifar10(datadir, greyscale=False, training_transforms=[], mode='train', tran
     elif subset is not None:
         raise ValueError('Invalid subset parameter.')
 
-    if subset:
+    if subset is not None:
 
         # according to Pytorch docs shuffle cannot be true if we are using a sampler
         # so we're going to turn it off in case that it's on
@@ -253,8 +253,6 @@ def cifar10(datadir, greyscale=False, training_transforms=[], mode='train', tran
 
         dataloader = th.utils.data.DataLoader(ds_subset, **kwargs)
         dataloader.Nsamples = indices_tensor.shape[0]
-        print(indices.shape[0])
-        exit(0)
 
     else:
         dataloader = th.utils.data.DataLoader(ds, **kwargs)

@@ -208,6 +208,13 @@ if has_cuda:
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
 
+# -------- If fine tuning --------
+# svdict = torch.load('./logs/cifar10/ResNet50/Aug-19-2020_13-48-11/best.pth.tar', map_location='cpu')
+# model.load_state_dict(svdict['state_dict'])
+
+# --------------------------------
+
+
 # ------------------------------------
 # Optimizer and learning rate schedule
 # ------------------------------------
