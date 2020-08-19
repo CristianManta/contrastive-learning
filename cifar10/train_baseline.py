@@ -124,7 +124,7 @@ if args.random_subset:
     Ix = np.random.choice(50000, size=args.num_train_images, replace=False)
     Ix = torch.from_numpy(Ix)
 else:
-    Ix = torch.arange(args.num_train_images)  # Use the first N images of test set
+    Ix = torch.arange(args.num_train_images)  # Use the first N images of train set
 subset = Subset(ds_train, Ix)
 num_train = args.num_train_images
 train_loader = torch.utils.data.DataLoader(

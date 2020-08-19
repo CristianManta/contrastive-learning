@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Shell script to launch PyTorch model testing experiments.
 # This is a template to use as a starting point for creating

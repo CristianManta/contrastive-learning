@@ -54,6 +54,13 @@ parser.add_argument('--epochs', type=int, default=200, metavar='N',
 parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
                     help='input batch size for testing (default: 1000)')
 
+parser.add_argument('--num-train-images', type=int, default=50000, metavar='NI',
+                    help='number of images to use in training (default=50000)')
+parser.add_argument('--num-test-images', type=int, default=10000, metavar='NI',
+                    help='number of test images to classify (default=10000)')
+parser.add_argument('--random-subset', action='store_true',
+                    default=False, help='use random subset of train and test images (default: False)')
+
 group1 = parser.add_argument_group('Model hyperparameters')
 group1.add_argument('--model', type=str, default='ResNet50',
                     help='Model architecture (default: ResNet50)')
@@ -136,16 +143,34 @@ with open(args_file_path, 'w') as f:
 
 # Data loaders
 workers = 4
+
+if args.num_test_images > 10000:
+    args.num_test_images = 10000
+if args.random_subset:
+    Ix = np.random.choice(10000, size=args.num_test_images, replace=False)
+else:
+    Ix = np.arange(args.num_test_images)  # Use the first N images of test set
+
+
 test_loader = getattr(dataloader, args.dataset)(args.datadir,
                                                 mode='test', transform=False,
                                                 batch_size=args.test_batch_size,
                                                 greyscale=args.greyscale,
                                                 num_workers=workers,
                                                 shuffle=False,
-                                                pin_memory=has_cuda)
+                                                pin_memory=has_cuda,
+                                                subset=Ix)
 
 image_shape = test_loader.image_shape
 transforms = [cutout(args.cutout, channels=image_shape[0])]
+
+if args.num_train_images > 50000:
+    args.num_train_images = 50000
+if args.random_subset:
+    Ix = np.random.choice(50000, size=args.num_train_images, replace=False)
+else:
+    Ix = np.arange(args.num_train_images)  # Use the first N images of train set
+
 train_loader = getattr(dataloader, args.dataset)(args.datadir,
                                                  mode='train', transform=True,
                                                  greyscale=args.greyscale,
@@ -154,7 +179,8 @@ train_loader = getattr(dataloader, args.dataset)(args.datadir,
                                                  num_workers=workers,
                                                  shuffle=True,
                                                  pin_memory=has_cuda,
-                                                 drop_last=True)
+                                                 drop_last=True,
+                                                 subset=Ix)
 
 # Initialize model
 classes = train_loader.classes
