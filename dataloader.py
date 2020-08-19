@@ -8,6 +8,7 @@ import torchvision
 import torchvision.transforms as transforms
 from torchvision.datasets import CIFAR10, CIFAR100, FashionMNIST, MNIST, KMNIST
 import torch.utils.data.sampler as sampler
+from torch.utils.data import Subset
 from math import floor
 
 
@@ -246,10 +247,14 @@ def cifar10(datadir, greyscale=False, training_transforms=[], mode='train', tran
         # according to Pytorch docs shuffle cannot be true if we are using a sampler
         # so we're going to turn it off in case that it's on
         kwargs['shuffle'] = False
+        indices_tensor = th.from_numpy(indices)
 
-        dataloader = th.utils.data.DataLoader(ds,
-                                              sampler=sampler.SubsetRandomSampler(indices), **kwargs)
-        dataloader.Nsamples = indices.size
+        ds_subset = Subset(ds, indices_tensor)
+
+        dataloader = th.utils.data.DataLoader(ds_subset, **kwargs)
+        dataloader.Nsamples = indices_tensor.shape[0]
+        print(indices.shape[0])
+        exit(0)
 
     else:
         dataloader = th.utils.data.DataLoader(ds, **kwargs)
