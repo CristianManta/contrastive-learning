@@ -5,15 +5,15 @@
 
 ## Comparison between the baseline ResNet50 and our contrastive model on CIFAR-10
 
-### Accuracy 
+### Accuracy on 100% of the Test Set
 
-|   pct. of labels available    | Baseline   | Contrastive  |
-|:-------:|:-----:|:-------:|
-| 100%      | 80%   | 74.79%   |
-| 10%       | 55.3% |   70.83% |
-| 1%        | 32.1% |    67.56%|
+|   pct. of labels available at train time   | Baseline   | Contrastive Linear Eval  | Contrastive Fine-Tuned |
+|:-------:|:-----:|:-------:|:---:|
+| 100%      | 93.93%   | 74.79%   | Coming soon |
+| 10%       | 64.39% |   70.83% | Coming soon |
+| 1%        | 30.92% |    67.56%| Coming soon |
 
-### Attacks
+### Attacks (doesn't include fine-tuned contrastive yet)
 
 #### Median adversarial distances
 

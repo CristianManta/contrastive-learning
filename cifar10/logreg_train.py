@@ -51,6 +51,8 @@ parser.add_argument('--num-test-images', type=int, default=10000, metavar='NI',
                     help='number of test images to classify (default=10000)')
 parser.add_argument('--random-subset', action='store_true',
                     default=False, help='use random subset of train and test images (default: False)')
+parser.add_argument('--fine-tune', action='store_true', dest='fine_tune',
+                    help="Whether to fine-tune the whole encoder + LR or not (default: False)")
 
 group1 = parser.add_argument_group('Model hyperparameters')
 group1.add_argument('--model', type=str, default='ResNet50',
