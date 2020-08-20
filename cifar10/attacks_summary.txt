@@ -1,6 +1,6 @@
 --------------- PGD section -------------------
 
-baseline model:
+baseline model: (WARNING: Obsolete. Need to update this with new baseline)
     median: 0
     mean: 0.0868
     max: 0.5
@@ -17,7 +17,7 @@ regularized contrastive model:
 
 --------------- PLB section -------------------
 
-baseline model:
+baseline model: (WARNING: Obsolete. Need to update this with new baseline)
     median: 0.118
     max: 0.699
 
