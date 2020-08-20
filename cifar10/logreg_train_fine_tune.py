@@ -82,6 +82,9 @@ parser.add_argument('--epochs', type=int, default=100,
                     help='Number of training epochs (default: 100)')
 parser.add_argument('--decay', type=float, default=0.0,
                     help='Weight decay (default: 0)')
+parser.add_argument('--momentum', type=float, default=0.9, metavar='M',
+                    help='SGD momentum parameter (default: 0.9)')
+
 
 args = parser.parse_args()
 
@@ -138,7 +141,9 @@ train_loader = torch.utils.data.DataLoader(
 class LogisticRegression(nn.Module):
     def __init__(self, input_dim, output_dim, use_softmax=False):
         super(LogisticRegression, self).__init__()
-        self.linear = torch.nn.Linear(input_dim, output_dim)
+        linear_layer = nn.Linear(input_dim, output_dim)
+        linear_layer.weight.data.fill_(0)
+        self.linear = linear_layer
         self.use_softmax = use_softmax
 
     def forward(self, x):
@@ -203,7 +208,25 @@ composite_model = CompositeModel(model, clf)
 loss_fn = torch.nn.CrossEntropyLoss(reduction='mean')
 
 # define optimizer
-optimizer = torch.optim.SGD(composite_model.parameters(), lr=args.lr, weight_decay=args.decay)
+# optimizer = torch.optim.SGD(composite_model.parameters(), lr=args.lr, weight_decay=args.decay)
+
+
+bparams = []
+oparams = []
+for name, p in composite_model.named_parameters():
+    if 'bias' in name:
+        bparams.append(p)
+    else:
+        oparams.append(p)
+
+
+optimizer = optim.SGD([{'params': oparams, 'weight_decay': args.decay},
+                       {'params': bparams, 'weight_decay': 0.}],
+                      lr=args.lr,
+                      momentum=args.momentum,
+                      nesterov=False)
+
+
 # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=len(train_loader), eta_min=0, last_epoch=-1)
 scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=1.5, last_epoch=-1)
 
