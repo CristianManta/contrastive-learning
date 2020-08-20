@@ -274,6 +274,8 @@ def train(epoch, ttot):
     with open(trainlog, 'a') as f:
         logger = csv.DictWriter(f, traincolumns)
 
+        print("Current LR: {}".format(schedule.get_lr()[0]))
+
         for batch_ix, (data, target) in enumerate(train_loader):
 
             if has_cuda:
@@ -416,8 +418,8 @@ def main():
             shutil.copyfile(save_model_path, best_model_path)
             pct0 = pct_err
 
-        if fail_count < 1:
-            raise ValueError('Percent error has not decreased in %d epochs' % fail_max)
+        # if fail_count < 1:
+        #     raise ValueError('Percent error has not decreased in %d epochs' % fail_max)
 
 
 if __name__ == '__main__':
