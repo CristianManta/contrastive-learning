@@ -1,3 +1,8 @@
+from datetime import datetime
+
+now_unformatted = datetime.now()
+time_string = now_unformatted.strftime("%b-%d-%Y_%H-%M-%S")
+
 import argparse
 import os, shutil, sys, pathlib
 
@@ -52,6 +57,12 @@ parser.add_argument('--num-test-images', type=int, default=10000, metavar='NI',
 parser.add_argument('--random-subset', action='store_true',
                     default=False, help='use random subset of train and test images (default: False)')
 
+parser.add_argument('--logdir', type=str, default=None, metavar='DIR',
+                    help='directory for outputting log files. (default: ./logs/DATASET/MODEL/TIMESTAMP/)')
+parser.add_argument('--weights', type=str, default=None, metavar='DIR',
+                    help='path to pre-trained encoder. (default: ./runs/encoder_best.pth.tar')
+
+
 group1 = parser.add_argument_group('Model hyperparameters')
 group1.add_argument('--model', type=str, default='ResNet50',
                     help='Model architecture (default: ResNet50)')
@@ -84,6 +95,9 @@ parser.add_argument('--decay', type=float, default=0.0,
                     help='Weight decay (default: 0)')
 parser.add_argument('--momentum', type=float, default=0.9, metavar='M',
                     help='SGD momentum parameter (default: 0.9)')
+parser.add_argument('--lr-schedule', type=str, metavar='[[epoch,ratio]]',
+                    default='[[0,1],[60,0.2],[120,0.04],[160,0.008]]', help='List of epochs and multiplier '
+                                                                            'for changing the learning rate (default: [[0,1],[60,0.2],[120,0.04],[160,0.008]]). ')
 
 
 args = parser.parse_args()
@@ -97,11 +111,26 @@ cudnn.benchmark = True
 torch.manual_seed(args.seed)
 np.random.seed(args.seed)
 
+# Set and create logging directory
+if args.logdir is None:
+    args.logdir = os.path.join('./logs/', time_string)
+
+os.makedirs(args.logdir, exist_ok=True)
+
+if args.weights is None:
+    args.weights = './runs/encoder_best.pth.tar'
+
+
 # Print args
 print('Contrastive Learning Classification on Cifar-10')
 for p in vars(args).items():
     print('  ', p[0] + ': ', p[1])
 print('\n')
+
+args_file_path = os.path.join(args.logdir, 'args.yaml')
+with open(args_file_path, 'w') as f:
+    yaml.dump(vars(args), f, default_flow_style=False)
+
 
 # make dataloaders
 root = os.path.join(args.data_dir, 'cifar10')
@@ -185,7 +214,7 @@ if has_cuda:
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
 
-savedict = torch.load('./runs/encoder_best.pth.tar', map_location='cpu')
+savedict = torch.load(args.weights, map_location='cpu')
 model.load_state_dict(savedict['state_dict'])
 
 # Get model output dim
@@ -228,7 +257,17 @@ optimizer = optim.SGD([{'params': oparams, 'weight_decay': args.decay},
 
 
 # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=len(train_loader), eta_min=0, last_epoch=-1)
-scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=1.5, last_epoch=-1)
+# scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=1.5, last_epoch=-1)
+def _scheduler(optimizer, args):
+    """Return a hyperparmeter scheduler for the optimizer"""
+    lS = np.array(ast.literal_eval(args.lr_schedule))
+    llam = lambda e: float(lS[max(bisect.bisect_right(lS[:, 0], e) - 1, 0), 1])
+    lscheduler = LambdaLR(optimizer, llam)
+
+    return lscheduler
+
+
+scheduler = _scheduler(optimizer, args)
 
 
 def train(epoch):
@@ -301,13 +340,20 @@ def main():
     for epoch in range(1, args.epochs + 1):
         train(epoch)
         test_loss, test_acc = test()
+        checkpoint = os.path.join(args.logdir, 'classifier_checkpoint.pth.tar')
+        best = os.path.join(args.logdir, 'classifier_best.pth.tar')
 
-        torch.save({'state_dict': composite_model.state_dict()}, './runs_fine_tuned/classifier_checkpoint.pth.tar')
+        torch.save({'state_dict': composite_model.state_dict()}, checkpoint)
 
         if test_acc > best_acc:
-            shutil.copyfile('./runs_fine_tuned/classifier_checkpoint.pth.tar',
-                            './runs_fine_tuned/classifier_best.pth.tar')
+            shutil.copyfile(checkpoint, best)
             best_acc = test_acc
+
+    print(f"Best test accuracy: {best_acc}%")
+    accuracy_log = os.path.join(args.logdir, 'accuracy.txt')
+    with open(accuracy_log, 'w') as f:
+        msg = "Best test accuracy: " + str(best_acc)
+        f.write(msg)
 
 
 if __name__ == "__main__":
