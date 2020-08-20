@@ -133,6 +133,38 @@ train_loader = torch.utils.data.DataLoader(
     batch_size=args.batch_size, shuffle=True,
     num_workers=4, pin_memory=True)
 
+
+# define the Logistic Regression classifier
+class LogisticRegression(nn.Module):
+    def __init__(self, input_dim, output_dim, use_softmax=False):
+        super(LogisticRegression, self).__init__()
+        self.linear = torch.nn.Linear(input_dim, output_dim)
+        self.use_softmax = use_softmax
+
+    def forward(self, x):
+        outputs = self.linear(x)
+        if self.use_softmax:
+            outputs = outputs.softmax(dim=-1)
+        return outputs
+
+
+# Define the composite model
+class CompositeModel(nn.Module):
+    def __init__(self, base, linear_clf):
+        super(CompositeModel, self).__init__()
+        self.base = base
+        self.linear_clf = linear_clf
+
+    def forward(self, x):
+        features, _ = self.base(x)
+        features = F.normalize(features, dim=1)
+        features = features.detach()
+        # features.requires_grad = True
+
+        output = self.linear_clf(features)
+        return output
+
+
 # initialize model and move it the GPU (if available)
 classes = 10
 model_args = ast.literal_eval(args.model_args)
@@ -150,9 +182,6 @@ if has_cuda:
 
 savedict = torch.load('./runs/encoder_best.pth.tar', map_location='cpu')
 model.load_state_dict(savedict['state_dict'])
-model.eval()
-for p in model.parameters():
-    p.requires_grad_(False)
 
 # Get model output dim
 for i, (x, _) in enumerate(train_loader):
@@ -162,39 +191,25 @@ for i, (x, _) in enumerate(train_loader):
     break
 num_features = out.shape[1]
 
-
-# define the Logistic Regression classifier
-class LogisticRegression(torch.nn.Module):
-    def __init__(self, input_dim, output_dim, use_softmax=False):
-        super(LogisticRegression, self).__init__()
-        self.linear = torch.nn.Linear(input_dim, output_dim)
-        self.use_softmax = use_softmax
-
-    def forward(self, x):
-        outputs = self.linear(x)
-        if self.use_softmax:
-            outputs = outputs.softmax(dim=-1)
-        return outputs
-
-
 clf = LogisticRegression(input_dim=num_features, output_dim=classes)
 if has_cuda:
     clf = clf.cuda()
     if torch.cuda.device_count() > 1:
         clf = nn.DataParallel(clf)
 
+composite_model = CompositeModel(model, clf)
+
 # the loss function
 loss_fn = torch.nn.CrossEntropyLoss(reduction='mean')
 
 # define optimizer
-optimizer = torch.optim.SGD(clf.parameters(), lr=args.lr, weight_decay=args.decay)
+optimizer = torch.optim.SGD(composite_model.parameters(), lr=args.lr, weight_decay=args.decay)
 # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=len(train_loader), eta_min=0, last_epoch=-1)
 scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=1.5, last_epoch=-1)
 
 
 def train(epoch):
-    model.eval()
-    clf.train()
+    composite_model.train()
     print("Current LR: {}".format(scheduler.get_lr()[0]))
 
     for batch_ix, (x, y) in enumerate(train_loader):
@@ -202,15 +217,7 @@ def train(epoch):
             x, y = x.cuda(), y.cuda()
 
         optimizer.zero_grad()
-
-        features, _ = model(x)
-        features = F.normalize(features, dim=1)  # Added this to try to improve accuracy
-
-        features = features.detach()
-        features.requires_grad = True
-
-        output = clf(features)
-
+        output = composite_model(x)
         loss = loss_fn(output, y)
 
         loss.backward()
@@ -225,8 +232,7 @@ def train(epoch):
 
 
 def test():
-    model.eval()
-    clf.eval()
+    composite_model.eval()
 
     test_loss = tnt.meter.AverageValueMeter()
 
@@ -245,9 +251,7 @@ def test():
 
             Nb = x.shape[0]
 
-            features, _ = model(x)
-            features = F.normalize(features, dim=1)  # Added this to try to improve accuracy
-            output = clf(features)
+            output = composite_model(x)
 
             predicted = torch.argmax(output, dim=1)
             total += Nb
@@ -275,10 +279,11 @@ def main():
         train(epoch)
         test_loss, test_acc = test()
 
-        torch.save({'state_dict': clf.state_dict()}, './runs/classifier_checkpoint.pth.tar')
+        torch.save({'state_dict': composite_model.state_dict()}, './runs_fine_tuned/classifier_checkpoint.pth.tar')
 
         if test_acc > best_acc:
-            shutil.copyfile('./runs/classifier_checkpoint.pth.tar', './runs/classifier_best.pth.tar')
+            shutil.copyfile('./runs_fine_tuned/classifier_checkpoint.pth.tar',
+                            './runs_fine_tuned/classifier_best.pth.tar')
             best_acc = test_acc
 
 
