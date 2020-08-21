@@ -209,6 +209,7 @@ scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=len(trai
 # define loss
 nt_xent_criterion = NTXentLoss(device=torch.cuda.current_device(), batch_size=args.batch_size, temperature=0.5,
                                use_cosine_similarity=True)
+# TODO: Check again. Chris defined 2 criterions: one for training and another one for test. I think this is fine here.
 
 # --------
 # Training

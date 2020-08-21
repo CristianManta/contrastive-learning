@@ -44,7 +44,7 @@ plb | Coming soon |  To do    | 0.122      |   nan (?!) |
 - [x] Adapt Chris's baseline training script to our experiments. In particular, add option to train on a subset of the labels. Run it on 100%, 10% and 1% of the labels.
 - [x] Add fine-tuning procedure of the contrastive model by initializing the linear classifier weights to 0 (not its biases).
 - [x] Run the fine-tuning on 100%, 10% and 1% of the labels
-- [ ] Add Tikhonov Regularization to the baseline training script **<-- In progress**
+- [x] Add Tikhonov Regularization to the baseline training script
 - [ ] Train the Tikhonov regularized baseline model and attack the unregularized and regularized version. Compare.
 - [ ] Add plots to compare the attack values
 - [ ] Implement contrastive loss layer by layer and using class label information instead of purely positive/negative samples

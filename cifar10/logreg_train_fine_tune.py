@@ -127,9 +127,12 @@ for p in vars(args).items():
     print('  ', p[0] + ': ', p[1])
 print('\n')
 
+# We want to be able to reproduce the experiments easily
 args_file_path = os.path.join(args.logdir, 'args.yaml')
 with open(args_file_path, 'w') as f:
     yaml.dump(vars(args), f, default_flow_style=False)
+
+shutil.copyfile('./logreg_train_fine_tune.py', os.path.join(args.logdir, 'logreg_train_fine_tune.py'))
 
 
 # make dataloaders
