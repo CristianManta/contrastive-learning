@@ -170,13 +170,18 @@ train_loader = torch.utils.data.DataLoader(
 class LogisticRegression(nn.Module):
     def __init__(self, input_dim, output_dim, use_softmax=False):
         super(LogisticRegression, self).__init__()
-        linear_layer = nn.Linear(input_dim, output_dim)
-        linear_layer.weight.data.fill_(0)
-        self.linear = linear_layer
+        linear_layer1 = nn.Linear(input_dim, input_dim)
+        linear_layer2 = nn.Linear(input_dim, output_dim)
+        # linear_layer1.weight.data.fill_(0)
+        linear_layer2.weight.data.fill_(0)
+        self.l1 = linear_layer1
+        self.l2 = linear_layer2
         self.use_softmax = use_softmax
 
     def forward(self, x):
-        outputs = self.linear(x)
+        x = self.l1(x)
+        x = F.relu(x)
+        outputs = self.l2(x)
         if self.use_softmax:
             outputs = outputs.softmax(dim=-1)
         return outputs
@@ -352,7 +357,7 @@ def main():
     print(f"Best test accuracy: {best_acc}%")
     accuracy_log = os.path.join(args.logdir, 'accuracy.txt')
     with open(accuracy_log, 'w') as f:
-        msg = "Best test accuracy: " + str(best_acc)
+        msg = "Best test accuracy: " + str(best_acc) + "%"
         f.write(msg)
 
 

@@ -31,7 +31,6 @@ from dataloader import cutout
 import baseline_models as models
 import baseline_models.cifar as cifarmodels
 
-
 # -------------
 # Initial setup
 # -------------
@@ -106,6 +105,16 @@ group2.add_argument('--decay', type=float, default=5e-4, metavar='L',
                     help='Lagrange multiplier for weight decay (sum '
                          'parameters squared) (default: 5e-4)')
 
+group2.add_argument('--penalty', type=float, default=0.1, metavar='L',
+                    help='Tikhonov regularization parameter (default: 0.1)')
+group2.add_argument('--norm', type=str, choices=['L1', 'L2', 'Linf'], default='L2',
+                    help='norm for gradient penalty, wrt model inputs. (default: L2)'
+                         ' Note that this should be dual to the norm measuring adversarial perturbations')
+group2.add_argument('--h', type=float, default=1e-2, metavar='H',
+                    help='finite difference step size (default: 1e-2)')
+group2.add_argument('--fd-order', type=str, choices=['O1', 'O2'], default='O1',
+                    help='accuracy of finite differences (default: O1)')
+
 args = parser.parse_args()
 
 # CUDA info
@@ -121,7 +130,7 @@ np.random.seed(args.seed)
 
 # Set and create logging directory
 if args.logdir is None:
-    args.logdir = os.path.join('./logs/', args.dataset, args.model, time_string)
+    args.logdir = os.path.join('./logs/', time_string)
 
 os.makedirs(args.logdir, exist_ok=True)
 
@@ -150,7 +159,6 @@ if args.random_subset:
     Ix = np.random.choice(10000, size=args.num_test_images, replace=False)
 else:
     Ix = np.arange(args.num_test_images)  # Use the first N images of test set
-
 
 test_loader = getattr(dataloader, args.dataset)(args.datadir,
                                                 mode='test', transform=False,
@@ -258,6 +266,10 @@ with open(trainlog, 'w') as f:
 
 ix = 0  # count of gradient steps
 
+tik = args.penalty
+regularizing = tik > 0
+h = args.h
+
 
 def train(epoch, ttot):
     global ix
@@ -283,8 +295,17 @@ def train(epoch, ttot):
                 target = target.cuda()
 
             optimizer.zero_grad()
+
+            if regularizing:
+                data.requires_grad_(True)
+
             output = model(data)
             loss = criterion(output, target)
+
+            # --Insert regularizing block here
+
+            # --------------------------------
+
             loss.backward()
 
             optimizer.step()
