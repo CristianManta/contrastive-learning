@@ -173,7 +173,7 @@ class LogisticRegression(nn.Module):
         linear_layer1 = nn.Linear(input_dim, input_dim)
         linear_layer2 = nn.Linear(input_dim, output_dim)
         # linear_layer1.weight.data.fill_(0)
-        linear_layer2.weight.data.fill_(0)
+        # linear_layer2.weight.data.fill_(0)
         self.l1 = linear_layer1
         self.l2 = linear_layer2
         self.use_softmax = use_softmax

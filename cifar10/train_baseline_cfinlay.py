@@ -302,6 +302,10 @@ def train(epoch, ttot):
             output = model(data)
             loss = criterion(output, target)
 
+            print(loss.item())
+            print(loss.mean())
+            exit(0)
+
             # --Insert regularizing block here
 
             # --------------------------------
