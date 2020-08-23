@@ -12,7 +12,6 @@ import csv
 
 import numpy as np
 import torch
-from torch.autograd import grad
 import torch.nn as nn
 import torch.backends.cudnn as cudnn
 from torch import optim
@@ -32,13 +31,14 @@ from dataloader import cutout
 import baseline_models as models
 import baseline_models.cifar as cifarmodels
 
+
 # -------------
 # Initial setup
 # -------------
 
 # Parse command line arguments 
 parser = argparse.ArgumentParser('Training template for DNN computer vision research in PyTorch')
-parser.add_argument('--datadir', type=str, default='/home/math/oberman-lab/data/cifar10', metavar='DIR',
+parser.add_argument('--datadir', type=str, required=True, metavar='DIR',
                     help='data storage directory')
 parser.add_argument('--dataset', type=str, help='dataset (default: "cifar10")',
                     default='cifar10', metavar='DS',
@@ -51,8 +51,8 @@ parser.add_argument('--seed', type=int, default=None, metavar='S',
                     help='random seed (default: int(time.time()) )')
 parser.add_argument('--epochs', type=int, default=200, metavar='N',
                     help='number of epochs to train (default: 200)')
-parser.add_argument('--test-batch-size', type=int, default=100, metavar='N',
-                    help='input batch size for testing (default: 100)')
+parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
+                    help='input batch size for testing (default: 1000)')
 
 parser.add_argument('--num-train-images', type=int, default=50000, metavar='NI',
                     help='number of images to use in training (default=50000)')
@@ -106,16 +106,6 @@ group2.add_argument('--decay', type=float, default=5e-4, metavar='L',
                     help='Lagrange multiplier for weight decay (sum '
                          'parameters squared) (default: 5e-4)')
 
-group2.add_argument('--penalty', type=float, default=0.1, metavar='L',
-                    help='Tikhonov regularization parameter (default: 0.1)')
-group2.add_argument('--norm', type=str, choices=['L1', 'L2', 'Linf'], default='L2',
-                    help='norm for gradient penalty, wrt model inputs. (default: L2)'
-                         ' Note that this should be dual to the norm measuring adversarial perturbations')
-group2.add_argument('--h', type=float, default=1e-2, metavar='H',
-                    help='finite difference step size (default: 1e-2)')
-group2.add_argument('--fd-order', type=str, choices=['O1', 'O2'], default='O1',
-                    help='accuracy of finite differences (default: O1)')
-
 args = parser.parse_args()
 
 # CUDA info
@@ -131,7 +121,7 @@ np.random.seed(args.seed)
 
 # Set and create logging directory
 if args.logdir is None:
-    args.logdir = os.path.join('./logs/', time_string)
+    args.logdir = os.path.join('./logs/', args.dataset, args.model, time_string)
 
 os.makedirs(args.logdir, exist_ok=True)
 
@@ -151,8 +141,6 @@ args_file_path = os.path.join(args.logdir, 'args.yaml')
 with open(args_file_path, 'w') as f:
     yaml.dump(vars(args), f, default_flow_style=False)
 
-shutil.copyfile('./train_baseline.py', os.path.join(args.logdir, 'train_baseline.py'))
-
 # Data loaders
 workers = 4
 
@@ -162,6 +150,7 @@ if args.random_subset:
     Ix = np.random.choice(10000, size=args.num_test_images, replace=False)
 else:
     Ix = np.arange(args.num_test_images)  # Use the first N images of test set
+
 
 test_loader = getattr(dataloader, args.dataset)(args.datadir,
                                                 mode='test', transform=False,
@@ -211,12 +200,10 @@ elif args.dataset == 'mnist':
 
 # Loss function and regularizers
 criterion = nn.CrossEntropyLoss()
-train_criterion = nn.CrossEntropyLoss(reduction='none')
 
 # Move to GPU if available
 if has_cuda:
     criterion = criterion.cuda(0)
-    train_criterion = train_criterion.cuda(0)
     model = model.cuda(0)
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
@@ -271,10 +258,6 @@ with open(trainlog, 'w') as f:
 
 ix = 0  # count of gradient steps
 
-tik = args.penalty
-regularizing = tik > 0
-h = args.h
-
 
 def train(epoch, ttot):
     global ix
@@ -300,68 +283,8 @@ def train(epoch, ttot):
                 target = target.cuda()
 
             optimizer.zero_grad()
-
-            if regularizing:
-                data.requires_grad_(True)
-
             output = model(data)
-            lx = train_criterion(output, target)
-            loss = lx.mean()
-
-            # Compute finite difference approximation of directional derivative of grad loss wrt inputs
-            if regularizing:
-
-                dx = grad(loss, data, retain_graph=True)[0]
-                sh = dx.shape
-                data.requires_grad_(False)
-
-                # v is the finite difference direction.
-                # For example, if norm=='L2', v is the gradient of the loss wrt inputs
-                v = dx.view(sh[0], -1)
-                Nb, Nd = v.shape
-
-                if args.norm == 'L2':
-                    nv = v.norm(2, dim=-1, keepdim=True)
-                    nz = nv.view(-1) > 0
-                    v[nz] = v[nz].div(nv[nz])
-                if args.norm == 'L1':
-                    v = v.sign()
-                    v = v / np.sqrt(Nd)
-                elif args.norm == 'Linf':
-                    vmax, Jmax = v.abs().max(dim=-1)
-                    sg = v.sign()
-                    I = torch.arange(Nb, device=v.device)
-                    sg = sg[I, Jmax]
-
-                    v = torch.zeros_like(v)
-                    I = I * Nd
-                    Ix = Jmax + I
-                    v.put_(Ix, sg)
-
-                v = v.view(sh)
-                xf = data + h * v
-
-                mf = model(xf)
-                lf = train_criterion(mf, target)
-                if args.fd_order == 'O2':
-                    xb = data - h * v
-                    mb = model(xb)
-                    lb = train_criterion(mb, target)
-                    H = 2 * h
-                else:
-                    H = h
-                    lb = lx
-                dl = (lf - lb) / H  # This is the finite difference approximation
-                # of the directional derivative of the loss
-
-            tik_penalty = torch.tensor(np.nan)
-            dlmean = torch.tensor(np.nan)
-            dlmax = torch.tensor(np.nan)
-            if regularizing:
-                dl2 = dl.pow(2)
-                tik_penalty = dl2.mean() / 2
-                loss = loss + tik * tik_penalty
-
+            loss = criterion(output, target)
             loss.backward()
 
             optimizer.step()
@@ -494,15 +417,9 @@ def main():
         if pct_err < pct0:
             shutil.copyfile(save_model_path, best_model_path)
             pct0 = pct_err
-    best_acc = 100 - pct0
-    with open(os.path.join(args.logdir, 'accuracy.txt'), 'w') as f:
-        msg = "Best accuracy on the test set: " + str(best_acc) + "%"
-        f.write(msg)
 
-    print(f"Best accuracy on the test set: {best_acc}")
-
-    # if fail_count < 1:
-    #     raise ValueError('Percent error has not decreased in %d epochs' % fail_max)
+        # if fail_count < 1:
+        #     raise ValueError('Percent error has not decreased in %d epochs' % fail_max)
 
 
 if __name__ == '__main__':

@@ -1,4 +1,0 @@
-Best clf accuracy: 80%
-
-Obtained with the same hyperparameters as the contrastive runs (
-works out of the box)

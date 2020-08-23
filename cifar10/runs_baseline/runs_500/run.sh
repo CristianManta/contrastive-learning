@@ -26,13 +26,16 @@ DATADIR='/home/math/oberman-lab/data/cifar10'  # Shared data file store
 # or alternately, from the command line issue
 # $ export CUDA_VISIBLE_DEVICES=<id>
 # to make only that GPU visible
-python train_baseline_cfinlay.py \
+python train_baseline.py \
     --bn \
-    --lr 0.1 \
+    --lr 0.005 \
     --lr-schedule '[[0,1],[60,0.2],[120,0.04],[160,0.008]]'\
     --cutout 0 \
-    --epochs 200 \
+    --epochs 300 \
     --test-batch-size 100 \
     --model $MODEL \
     --dataset $DATASET \
-    --datadir $DATADIR
+    --datadir $DATADIR \
+    --num-train-images 500 \
+    --random-subset \
+    --log-interval 2
