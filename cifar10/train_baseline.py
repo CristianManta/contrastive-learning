@@ -46,7 +46,7 @@ parser.add_argument('--dataset', type=str, help='dataset (default: "cifar10")',
 parser.add_argument('--log-interval', type=int, default=100, metavar='N',
                     help='how many batches to wait before logging training status (default: 100)')
 parser.add_argument('--logdir', type=str, default=None, metavar='DIR',
-                    help='directory for outputting log files. (default: ./logs/DATASET/MODEL/TIMESTAMP/)')
+                    help='directory for outputting log files. (default: ./logs/TIMESTAMP/)')
 parser.add_argument('--seed', type=int, default=None, metavar='S',
                     help='random seed (default: int(time.time()) )')
 parser.add_argument('--epochs', type=int, default=200, metavar='N',
