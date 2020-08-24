@@ -36,7 +36,7 @@ import baseline_models.cifar as cifarmodels
 # Initial setup
 # -------------
 
-# Parse command line arguments 
+# Parse command line arguments
 parser = argparse.ArgumentParser('Training template for DNN computer vision research in PyTorch')
 parser.add_argument('--datadir', type=str, default='/home/math/oberman-lab/data/cifar10', metavar='DIR',
                     help='data storage directory')
@@ -151,7 +151,7 @@ args_file_path = os.path.join(args.logdir, 'args.yaml')
 with open(args_file_path, 'w') as f:
     yaml.dump(vars(args), f, default_flow_style=False)
 
-shutil.copyfile('./train_baseline.py', os.path.join(args.logdir, 'train_baseline.py'))
+shutil.copyfile('./train_baseline_exact.py', os.path.join(args.logdir, 'train_baseline_exact.py'))
 
 # Data loaders
 workers = 4
@@ -321,45 +321,16 @@ def train(epoch, ttot):
                 Nb, Nd = v.shape
 
                 if args.norm == 'L2':
-                    nv = v.norm(2, dim=-1, keepdim=True)
-                    nz = nv.view(-1) > 0
-                    v[nz] = v[nz].div(nv[nz])
-                if args.norm == 'L1':
-                    v = v.sign()
-                    v = v / np.sqrt(Nd)
-                elif args.norm == 'Linf':
-                    vmax, Jmax = v.abs().max(dim=-1)
-                    sg = v.sign()
-                    I = torch.arange(Nb, device=v.device)
-                    sg = sg[I, Jmax]
-
-                    v = torch.zeros_like(v)
-                    I = I * Nd
-                    Ix = Jmax + I
-                    v.put_(Ix, sg)
-
-                v = v.view(sh)
-                xf = data + h * v
-
-                mf = model(xf)
-                lf = train_criterion(mf, target)
-                if args.fd_order == 'O2':
-                    xb = data - h * v
-                    mb = model(xb)
-                    lb = train_criterion(mb, target)
-                    H = 2 * h
+                    nv = v.norm(2, dim=-1)
                 else:
-                    H = h
-                    lb = lx
-                dl = (lf - lb) / H  # This is the finite difference approximation
-                # of the directional derivative of the loss
+                    raise ValueError("Norms other than L2 are not yet implemented yet.")
 
             tik_penalty = torch.tensor(np.nan)
             dlmean = torch.tensor(np.nan)
             dlmax = torch.tensor(np.nan)
             if regularizing:
-                dl2 = dl.pow(2)
-                tik_penalty = dl2.mean() / 2
+                nv2 = nv.pow(2)
+                tik_penalty = nv2.mean() / 2
                 loss = loss + tik * tik_penalty
 
             loss.backward()

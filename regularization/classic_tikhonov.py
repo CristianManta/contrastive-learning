@@ -363,6 +363,7 @@ def train(epoch):
         loss.backward()
 
         optimizer.step()
+        scheduler.step()
 
         if np.isnan(loss.data.item()):
             raise ValueError('model returned nan during training')
