@@ -331,7 +331,11 @@ def train(epoch, ttot):
             if regularizing:
                 nv2 = nv.pow(2)
                 tik_penalty = nv2.mean() / 2
+                # print(f"loss before = {loss}")
                 loss = loss + tik * tik_penalty
+                # print(f"loss after = {loss}")
+                # print(f"tik_penalty = {tik_penalty}")
+                # print("\n")
 
             loss.backward()
 

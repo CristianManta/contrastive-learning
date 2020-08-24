@@ -40,12 +40,18 @@ plb | 0.755 |  To do    | 0.122      |   nan (?!) |
 |:--------:|:--------:|
 | 93.6%    | 90.6%    |
 
+### Status
+
+The penalty parameter used for the training of the Tikhonov regularized baseline model (0.1) is apparently too small (I know that because the attack distances were smaller than for the unregularized model, so it's within the same margin of error). I'm re-running many scripts in parallel with varying penalties during the night.
+
+I also replaced the finite difference gradient approximation from [this paper](https://arxiv.org/pdf/1905.11468.pdf) and [this repo](https://github.com/cfinlay/tulip) by an exact computation (at the cost of scalability, but the scripts are working fine on CIFAR10 at least). I had to do this in order to fix the problem that the accuracy of the baseline model was below 20% suddenly when applying Tikhonov, while it was 94% without it. The loss landscape must be so non smooth in this case that the finite difference approximation was very bad.
+
 ### TODO
 - [x] Adapt Chris's baseline training script to our experiments. In particular, add option to train on a subset of the labels. Run it on 100%, 10% and 1% of the labels.
 - [x] Add fine-tuning procedure of the contrastive model by initializing the linear classifier weights to 0 (not its biases).
 - [x] Run the fine-tuning on 100%, 10% and 1% of the labels
 - [x] Add Tikhonov Regularization to the baseline training script
-- [ ] Train the Tikhonov regularized baseline model and attack the unregularized and regularized version. Compare. <-- **In progress** (I'm reverting the attack codes back to their original versions)
+- [ ] Train the Tikhonov regularized baseline model and attack the unregularized and regularized version. Compare. <-- **In progress**
 - [ ] Add plots to compare the attack values
 - [ ] Implement contrastive loss layer by layer and using class label information instead of purely positive/negative samples
 - [ ] Implement layer-by-layer Tikhonov regularization

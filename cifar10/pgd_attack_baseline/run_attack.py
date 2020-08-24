@@ -33,7 +33,7 @@ parser = argparse.ArgumentParser('Attack an example CIFAR10 example with L2PGD')
 parser.add_argument('--data-dir', type=str, default='/home/math/oberman-lab/data/cifar10',
         metavar='DIR', help='Directory where data is saved')
 parser.add_argument('--model-path', type=str,
-                    default='/home/math/dragos.manta/contrastive/ContrastiveTeamO/cifar10/runs_baseline_tik/runs/best'
+                    default='/home/math/dragos.manta/contrastive/ContrastiveTeamO/cifar10/runs_baseline_tik/runs2/best'
                             '.pth.tar',
                     metavar='PATH',
                     help='path to the .pth.tar trained model file')
