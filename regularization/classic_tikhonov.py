@@ -1,3 +1,7 @@
+# TODO: I found that the finite difference approximation seriously messes up the accuracy of the Tikhonov regularized
+# TODO: model. When replacing it by an exact gradient norm computation, the accuracy seems to be normal again.
+# TODO: Investigate similar changes in this script as well then.
+
 import argparse
 import os, shutil, sys, pathlib
 

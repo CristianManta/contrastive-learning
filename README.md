@@ -19,20 +19,20 @@
 
 | attack type | Baseline | Baseline + Tikhonov    | Contrastive   | Contrastive + Tikhonov  |
 |:----:|:-------------:|:-------------:|:-----:|:---:|
-pgd  | Coming soon | To do     | 0 (?!) | 0 (?!) |
+pgd  | 0.121 | To do     | 0 (?!) | 0 (?!) |
 plb | Coming soon | To do      | 0.12      |   0.185 |
 
 #### Mean adversarial distances
 
 | attack type | Baseline | Baseline + Tikhonov    | Contrastive   | Contrastive + Tikhonov  |
 |:----:|:-------------:|:-------------:|:-----:|:---:|
-pgd | Coming soon | To do     | 0.0355 | 0.0627 |
+pgd | 0.147 | To do     | 0.0355 | 0.0627 |
 
 #### Max adversarial distances
 
 | attack type |   Baseline| Baseline + Tikhonov    | Contrastive   | Contrastive + Tikhonov  |
 |:----:|:-------------:|:-------------:|:-----:|:---:|
-pgd | Coming soon | To do     | 0.5 | 0.5 |
+pgd | 0.5 | To do     | 0.5 | 0.5 |
 plb | Coming soon |  To do    | 0.122      |   nan (?!) |
 
 ### Accuracy Claims from [this paper](https://arxiv.org/pdf/2002.05709.pdf)
