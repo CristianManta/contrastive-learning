@@ -17,7 +17,6 @@ import torch.nn.functional as F
 
 import torchvision.models as models
 # from foolbox.adversarial import Adversarial
-# import foolbox
 
 from scipy.ndimage.filters import gaussian_filter
 
