@@ -279,11 +279,11 @@ def train(epoch):
         # Compute finite difference approximation of directional derivative of grad loss wrt inputs
         if regularizing:
 
-            dx_xis = grad(loss, xis, retain_graph=True)[0]
+            dx_xis = grad(loss, xis, retain_graph=True, create_graph=True)[0]
             sh = dx_xis.shape
             xis.requires_grad_(False)
 
-            dx_xjs = grad(loss, xjs, retain_graph=True)[0]
+            dx_xjs = grad(loss, xjs, retain_graph=True, create_graph=True)[0]
             xjs.requires_grad_(False)
 
             # v is the finite difference direction.

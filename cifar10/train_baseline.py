@@ -360,7 +360,12 @@ def train(epoch, ttot):
             if regularizing:
                 dl2 = dl.pow(2)
                 tik_penalty = dl2.mean() / 2
+                print(f"loss before = {loss}")
+                print(f"tik_penalty = {tik_penalty}")
                 loss = loss + tik * tik_penalty
+                print(f"loss after = {loss}")
+                print("\n")
+                # exit(0)
 
             loss.backward()
 

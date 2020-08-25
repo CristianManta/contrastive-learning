@@ -311,7 +311,7 @@ def train(epoch, ttot):
             # Compute finite difference approximation of directional derivative of grad loss wrt inputs
             if regularizing:
 
-                dx = grad(loss, data, retain_graph=True)[0]
+                dx = grad(loss, data, retain_graph=True, create_graph=True)[0]
                 sh = dx.shape
                 data.requires_grad_(False)
 
@@ -338,7 +338,6 @@ def train(epoch, ttot):
                 # print("\n")
 
             loss.backward()
-
             optimizer.step()
 
             if np.isnan(loss.data.item()):
