@@ -1,6 +1,65 @@
 # ContrastiveTeam0
 
 ## A place to push new ideas for Contrastive Learning
+### Description
+All the research has been done using the ResNet50 model as the encoder for learning the representations.
+
+The [cifar10](https://github.com/AOTeam2020/ContrastiveTeamO/tree/cristian/cifar10) directory contains all the
+training scripts and utilities for the contrastive learning model without Tikhonov regularization on the CIFAR10 dataset.
+[train.py](https://github.com/AOTeam2020/ContrastiveTeamO/blob/cristian/cifar10/train.py)
+is the main script for training the contrastive model.
+[logreg_train.py](https://github.com/AOTeam2020/ContrastiveTeamO/blob/cristian/cifar10/logreg_train.py)
+is the script for the linear classifier used in the linear evaluation protocol in [this paper](https://arxiv.org/pdf/2002.05709.pdf).
+[logreg_train_fine_tune.py](https://github.com/AOTeam2020/ContrastiveTeamO/blob/cristian/cifar10/logreg_train_fine_tune.py)
+implements the fine-tuning of the whole model, **but** with the following important difference
+compared to `logreg_train.py`:
+ 
+```python
+# logreg_train_fine_tune.py
+class LogisticRegression(nn.Module):
+    def __init__(self, input_dim, output_dim, use_softmax=False):
+        super(LogisticRegression, self).__init__()
+        linear_layer1 = nn.Linear(input_dim, input_dim)
+        linear_layer2 = nn.Linear(input_dim, output_dim)
+        self.l1 = linear_layer1
+        self.l2 = linear_layer2
+        self.use_softmax = use_softmax
+
+    def forward(self, x):
+        x = self.l1(x)
+        x = F.relu(x)
+        outputs = self.l2(x)
+        if self.use_softmax:
+            outputs = outputs.softmax(dim=-1)
+        return outputs
+```
+
+```python
+# logreg_train.py
+class LogisticRegression(torch.nn.Module):
+    def __init__(self, input_dim, output_dim, use_softmax=False):
+        super(LogisticRegression, self).__init__()
+        self.linear = torch.nn.Linear(input_dim, output_dim)
+        self.use_softmax = use_softmax
+
+    def forward(self, x):
+        outputs = self.linear(x)
+        if self.use_softmax:
+            outputs = outputs.softmax(dim=-1)
+        return outputs
+```
+Indeed, I found that having 2 linear layers (with `relu` in between) *slightly* increased the accuracy, which I found appropriate for fine-tuning.
+
+[train_baseline.py](https://github.com/AOTeam2020/ContrastiveTeamO/blob/cristian/cifar10/train_baseline.py)
+is a fancy baseline training script with Tikhonov regularization options. It can also train on a random subset of the labels.
+ **Important:** The Tikhonov regularization implemented here uses the finite difference approximation from [this repository](https://github.com/cfinlay/tulip/tree/master/cifar10).
+ 
+[train_baseline_exact.py](https://github.com/AOTeam2020/ContrastiveTeamO/blob/cristian/cifar10/train_baseline_exact.py)
+does the same job as `train_baseline.py`, but I replaced the finite difference approximation by a double backpropagation for better accuracy with "less smooth" loss functions at the cost of scalability. I kept both versions because they will likely both be useful in different circumstances.
+
+This directory also contains all the attack codes. I adopted the convention that, if a name is not followed by "_baseline", then it refers to the basic contrastive model (encoder + linear classifier, not even fine-tune). The "_500" and "_5000" appended to the names of some files or directories refer to the number of labels that the model had access during training.
+
+
 
 
 ## Comparison between the baseline ResNet50 and our contrastive model on CIFAR-10

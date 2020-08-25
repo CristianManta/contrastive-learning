@@ -114,16 +114,16 @@ torch.manual_seed(args.seed)
 np.random.seed(args.seed)
 random.seed(args.seed)
 
+# Create logging directory
+if args.logdir is None:
+    args.logdir = os.path.join('./logs/', time_string)
+os.makedirs(args.logdir, exist_ok=True)
+
 # Print args
 print('Contrastive Learning on Cifar-10')
 for p in vars(args).items():
     print('  ', p[0] + ': ', p[1])
 print('\n')
-
-# Create logging directory
-if args.logdir is None:
-    args.logdir = os.path.join('./logs/', time_string)
-os.makedirs(args.logdir, exist_ok=True)
 
 args_file_path = os.path.join(args.logdir, 'args.yaml')
 with open(args_file_path, 'w') as f:
