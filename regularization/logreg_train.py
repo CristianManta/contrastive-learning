@@ -52,6 +52,12 @@ parser.add_argument('--num-test-images', type=int, default=10000, metavar='NI',
 parser.add_argument('--random-subset', action='store_true',
                     default=False, help='use random subset of test images (default: False)')
 
+parser.add_argument('--logdir', type=str, default=None, metavar='DIR',
+                    help='directory for outputting log files. (default: ./logs/TIMESTAMP/)')
+
+parser.add_argument('--encoder', type=str, default=None, metavar='DIR', required=True,
+                    help='path to directory containing the pre-trained encoder. Required.')
+
 group1 = parser.add_argument_group('Model hyperparameters')
 group1.add_argument('--model', type=str, default='ResNet50',
                     help='Model architecture (default: ResNet50)')
@@ -91,11 +97,27 @@ cudnn.benchmark = True
 torch.manual_seed(args.seed)
 np.random.seed(args.seed)
 
+# Set and create logging directory
+if args.logdir is None:
+    args.logdir = args.encoder
+
+encoder_best_path = os.path.join(args.encoder, 'encoder_best.pth.tar')
+if not os.path.exists(encoder_best_path):
+    raise ValueError("The encoder path that you entered is invalid.")
+
+os.makedirs(args.logdir, exist_ok=True)
+
 # Print args
 print('Contrastive Learning Classification on Cifar-10')
 for p in vars(args).items():
     print('  ', p[0] + ': ', p[1])
 print('\n')
+
+args_file_path = os.path.join(args.logdir, 'clf_args.yaml')
+with open(args_file_path, 'w') as f:
+    yaml.dump(vars(args), f, default_flow_style=False)
+
+shutil.copyfile('./logreg_train.py', os.path.join(args.logdir, 'logreg_train.py'))
 
 # make dataloaders
 root = os.path.join(args.data_dir, 'cifar10')
@@ -145,7 +167,7 @@ if has_cuda:
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
 
-savedict = torch.load('./runs/encoder_best.pth.tar', map_location='cpu')
+savedict = torch.load(encoder_best_path, map_location='cpu')
 model.load_state_dict(savedict['state_dict'])
 model.eval()
 for p in model.parameters():
@@ -267,17 +289,25 @@ def test():
 
 
 def main():
+    save_path = os.path.join(args.logdir, 'classifier_checkpoint.pth.tar')
+    best_path = os.path.join(args.logdir, 'classifier_best.pth.tar')
     best_acc = 0.0
 
     for epoch in range(1, args.epochs + 1):
         train(epoch)
         test_loss, test_acc = test()
 
-        torch.save({'state_dict': clf.state_dict()}, './runs/classifier_checkpoint.pth.tar')
+        torch.save({'state_dict': clf.state_dict()}, save_path)
 
         if test_acc > best_acc:
-            shutil.copyfile('./runs/classifier_checkpoint.pth.tar', './runs/classifier_best.pth.tar')
+            shutil.copyfile(save_path, best_path)
             best_acc = test_acc
+
+    with open(os.path.join(args.logdir, 'clf_accuracy.txt'), 'w') as f:
+        msg = "Best accuracy on the test set: " + str(best_acc) + "%"
+        f.write(msg)
+
+    print(f"Best accuracy on the test set: {best_acc}%")
 
 
 if __name__ == "__main__":

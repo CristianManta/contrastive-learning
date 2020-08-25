@@ -93,21 +93,21 @@ In addition, all the directories inside the attack directories are for logging t
 
 | attack type | Baseline | Baseline + Tikhonov    | Contrastive   | Contrastive + Tikhonov  |
 |:----:|:-------------:|:-------------:|:-----:|:---:|
-pgd  | 0.121 | 0.12     | 0 (?!) | 0 (?!) |
-plb | 0.125 | 0.134     | 0.12      |   0.185 |
+pgd  | 0.121 | 0.12     | 0 (?!) | 0.0907 |
+plb | 0.125 | 0.134     | 0.12      |   0.0715 |
 
 #### Mean adversarial distances
 
 | attack type | Baseline | Baseline + Tikhonov    | Contrastive   | Contrastive + Tikhonov  |
 |:----:|:-------------:|:-------------:|:-----:|:---:|
-pgd | 0.147 | 0.16     | 0.0355 | 0.0627 |
+pgd | 0.147 | 0.16     | 0.0355 | nan |
 
 #### Max adversarial distances
 
 | attack type |   Baseline| Baseline + Tikhonov    | Contrastive   | Contrastive + Tikhonov  |
 |:----:|:-------------:|:-------------:|:-----:|:---:|
-pgd | 0.5 | 0.5     | 0.5 | 0.5 |
-plb | 0.755 |  0.566    | 0.122      |   nan (?!) |
+pgd | 0.5 | 0.5     | 0.5 | nan |
+plb | 0.755 |  0.566    | 0.122      |   1.16 |
 
 To reproduce the experiments, please refer to the appropriate logging directory to find the appropriate arguments.
 
@@ -138,8 +138,8 @@ So far, the training finally seems to work well (accuracy values make sense).
 - [x] Add fine-tuning procedure of the contrastive model by initializing the linear classifier weights to 0 (not its biases).
 - [x] Run the fine-tuning on 100%, 10% and 1% of the labels
 - [x] Add Tikhonov Regularization to the baseline training script
+- [x] Train the Tikhonov regularized baseline model and attack the unregularized and regularized version. Compare.
 - [ ] Wrap-up the project (document well the experiments + summarize research + organize/clean this repo) <-- **In progress**
-- [ ] Train the Tikhonov regularized baseline model and attack the unregularized and regularized version. Compare. <-- **In progress**
 - [ ] Add plots to compare the attack values
 - [ ] Implement contrastive loss layer by layer and using class label information instead of purely positive/negative samples
 - [ ] Implement layer-by-layer Tikhonov regularization

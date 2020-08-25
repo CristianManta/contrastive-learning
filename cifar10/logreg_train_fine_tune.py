@@ -58,10 +58,9 @@ parser.add_argument('--random-subset', action='store_true',
                     default=False, help='use random subset of train and test images (default: False)')
 
 parser.add_argument('--logdir', type=str, default=None, metavar='DIR',
-                    help='directory for outputting log files. (default: ./logs/DATASET/MODEL/TIMESTAMP/)')
+                    help='directory for outputting log files. (default: ./logs/TIMESTAMP/)')
 parser.add_argument('--weights', type=str, default=None, metavar='DIR',
                     help='path to pre-trained encoder. (default: ./runs/encoder_best.pth.tar')
-
 
 group1 = parser.add_argument_group('Model hyperparameters')
 group1.add_argument('--model', type=str, default='ResNet50',
