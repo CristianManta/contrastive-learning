@@ -48,7 +48,8 @@ class LogisticRegression(torch.nn.Module):
             outputs = outputs.softmax(dim=-1)
         return outputs
 ```
-Indeed, I found that having 2 linear layers (with `relu` in between) *slightly* increased the accuracy, which I found appropriate for fine-tuning.
+Indeed, I found that having 2 linear layers (with `relu` in between) *slightly* increased the accuracy, which I found appropriate for fine-tuning. Also, the idea came from the fact that this is the structure of the projection head g in [this paper](https://arxiv.org/pdf/2002.05709.pdf).
+Moreover, I found that initializing the weights to 0 (after applying `relu`) did not increase the accuracy.
 
 [train_baseline.py](https://github.com/AOTeam2020/ContrastiveTeamO/blob/cristian/cifar10/train_baseline.py)
 is a fancy baseline training script with Tikhonov regularization options. It can also train on a random subset of the labels.
@@ -57,9 +58,23 @@ is a fancy baseline training script with Tikhonov regularization options. It can
 [train_baseline_exact.py](https://github.com/AOTeam2020/ContrastiveTeamO/blob/cristian/cifar10/train_baseline_exact.py)
 does the same job as `train_baseline.py`, but I replaced the finite difference approximation by a double backpropagation for better accuracy with "less smooth" loss functions at the cost of scalability. I kept both versions because they will likely both be useful in different circumstances.
 
-This directory also contains all the attack codes. I adopted the convention that, if a name is not followed by "_baseline", then it refers to the basic contrastive model (encoder + linear classifier, not even fine-tune). The "_500" and "_5000" appended to the names of some files or directories refer to the number of labels that the model had access during training.
+The `cifar10` directory also contains all the attack codes. I adopted the convention that, if a name is not followed by "_baseline", then it refers to the basic contrastive model. The "_500" and "_5000" appended to the names of some files or directories refer to the number of labels that the model had access to during training.
 
+The [imagenet](https://github.com/AOTeam2020/ContrastiveTeamO/tree/cristian/imagenet)
+directory has a similar goal to the `cifar10` one, but has been much less explored.
 
+The [regularizaztion](https://github.com/AOTeam2020/ContrastiveTeamO/tree/cristian/regularization)
+ directory contains the training scripts for the Tikhonov regularized *contrastive models*. The structure is similar to
+ that of `cifar10` directory. The two main scripts are [classic_tikhonov.py](https://github.com/AOTeam2020/ContrastiveTeamO/blob/cristian/regularization/classic_tikhonov.py)
+ and [classic_tikhonov_exact.py](https://github.com/AOTeam2020/ContrastiveTeamO/blob/cristian/regularization/classic_tikhonov_exact.py)
+ for training a Tikhonov regularized contrastive model. The difference between them is the implementation of the Tikhonov penalty term (see `train_baseline.py` vs. `train_baseline_exact.py` above).
+ 
+[layer_wise.py](https://github.com/AOTeam2020/ContrastiveTeamO/blob/cristian/regularization/layer_wise.py)
+is an **experimental** script towards the layer-by-layer regularization.
+The last thing that I did with it was to figure out how to isolate the major layers of the resnet model in order to call them separately, thus enabling the possibility to add a penalty term to each layer. **This script is not in a working state**.
+
+All the directories that start with either "runs" or "logs" are (logging) directories that should contain all the necessary info in order to reproduce a given experiment, in particular: `args.yaml` + `.py` script used at that time. They also contain info about the outcomes of each experiment, like accuracies.
+In addition, all the directories inside the attack directories are for logging the adversarial distances.
 
 
 ## Comparison between the baseline ResNet50 and our contrastive model on CIFAR-10
