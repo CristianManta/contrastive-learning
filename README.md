@@ -48,7 +48,7 @@ I replaced the finite difference gradient approximation from [this paper](https:
 ~~Now the penalty parameter used for the training of the Tikhonov regularized baseline model (0.1) is apparently too small (I know that because the attack distances were smaller than for the unregularized model, so it's within the same margin of error).~~ I'm re-running many scripts in parallel with varying penalties during the night.
 
 #### Aug. 25
-The actual issue was that `grad` needed `create_graph=True` passed in as parameter in order to re-use it again for further differentiation. Otherwise any penalty would have no effect (see below paragraph) at all with this new implementation.
+The actual issue was that `grad` needed `create_graph=True` passed in as parameter in order to re-use it again for further differentiation. Otherwise any penalty would have no effect at all with this new implementation.
 
 
 
