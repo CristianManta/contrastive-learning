@@ -43,12 +43,17 @@ plb | 0.755 |  To do    | 0.122      |   nan (?!) |
 ### Status
 
 #### Aug. 24
-I replaced the finite difference gradient approximation from [this paper](https://arxiv.org/pdf/1905.11468.pdf) and [this repo](https://github.com/cfinlay/tulip) by an exact computation (at the cost of scalability, but the scripts are working fine on CIFAR10 at least). I had to do this in order to fix the problem that the accuracy of the baseline model was below 20% suddenly when applying Tikhonov (with penalty=0.1), while it was 94% without it. The loss landscape must be so non smooth in this case that the finite difference approximation was very bad.
+I replaced the finite difference gradient approximation from [this paper](https://arxiv.org/pdf/1905.11468.pdf) and [this repo](https://github.com/cfinlay/tulip) by an exact computation (at the cost of scalability, but the scripts are working fine on CIFAR10 at least).
+I had to do this in order to fix the problem that the accuracy of the baseline model was below 20% suddenly when applying Tikhonov (with `penalty=0.1`), while it was 94% without it.
+The loss landscape must be so non smooth in this case that the finite difference approximation was very bad.
 
 ~~Now the penalty parameter used for the training of the Tikhonov regularized baseline model (0.1) is apparently too small (I know that because the attack distances were smaller than for the unregularized model, so it's within the same margin of error).~~ I'm re-running many scripts in parallel with varying penalties during the night.
 
 #### Aug. 25
 The actual issue was that `grad` needed `create_graph=True` passed in as parameter in order to re-use it again for further differentiation. Otherwise any penalty would have no effect at all with this new implementation.
+
+Now running again the baseline + Tikhonov script with `penalty=0.1`, as well as contrastive + (classic) Tikhonov with the same `penalty`.
+So far, the training finally seems to work well (accuracy values make sense).
 
 
 
