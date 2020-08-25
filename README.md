@@ -108,6 +108,7 @@ pgd | 0.147 | To do     | 0.0355 | 0.0627 |
 |:----:|:-------------:|:-------------:|:-----:|:---:|
 pgd | 0.5 | To do     | 0.5 | 0.5 |
 plb | 0.755 |  To do    | 0.122      |   nan (?!) |
+To reproduce the experiments, please refer to the appropriate logging directory to find the appropriate arguments.
 
 ### Accuracy Claims from [this paper](https://arxiv.org/pdf/2002.05709.pdf)
 | Baseline (supervised ResNet50) | Contrastive |
