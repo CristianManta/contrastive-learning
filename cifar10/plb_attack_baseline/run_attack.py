@@ -36,7 +36,7 @@ groups0.add_argument('--data-dir', type=str, default='/home/math/oberman-lab/dat
         help='Directory where CIFAR10 data is saved')
 
 parser.add_argument('--model-path', type=str,
-                    default='/home/math/dragos.manta/contrastive/ContrastiveTeamO/cifar10/runs_baseline/runs/best'
+                    default='/home/math/dragos.manta/contrastive/ContrastiveTeamO/cifar10/runs_baseline_tik/runs/best'
                             '.pth.tar',
                     metavar='PATH',
                     help='path to the .pth.tar trained model file')
