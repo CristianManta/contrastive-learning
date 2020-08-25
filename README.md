@@ -93,20 +93,20 @@ In addition, all the directories inside the attack directories are for logging t
 
 | attack type | Baseline | Baseline + Tikhonov    | Contrastive   | Contrastive + Tikhonov  |
 |:----:|:-------------:|:-------------:|:-----:|:---:|
-pgd  | 0.121 | 0.12     | 0 (?!) | 0.0907 |
+pgd  | 0.121 | 0.12     | 0 (?!) | 0 (?!) |
 plb | 0.125 | 0.134     | 0.12      |   0.0715 |
 
 #### Mean adversarial distances
 
 | attack type | Baseline | Baseline + Tikhonov    | Contrastive   | Contrastive + Tikhonov  |
 |:----:|:-------------:|:-------------:|:-----:|:---:|
-pgd | 0.147 | 0.16     | 0.0355 | nan |
+pgd | 0.147 | 0.16     | 0.0355 | 0.0602 |
 
 #### Max adversarial distances
 
 | attack type |   Baseline| Baseline + Tikhonov    | Contrastive   | Contrastive + Tikhonov  |
 |:----:|:-------------:|:-------------:|:-----:|:---:|
-pgd | 0.5 | 0.5     | 0.5 | nan |
+pgd | 0.5 | 0.5     | 0.5 | 0.5 |
 plb | 0.755 |  0.566    | 0.122      |   1.16 |
 
 To reproduce the experiments, please refer to the appropriate logging directory to find the appropriate arguments.
@@ -130,6 +130,8 @@ The actual issue was that `grad` needed `create_graph=True` passed in as paramet
 
 Now running again the baseline + Tikhonov script with `penalty=0.1`, as well as contrastive + (classic) Tikhonov with the same `penalty`.
 So far, the training finally seems to work well (accuracy values make sense).
+
+Attack results are in. Except for the plb row of the last table, the results are not satisfying.
 
 
 
