@@ -93,20 +93,20 @@ In addition, all the directories inside the attack directories are for logging t
 
 | attack type | Baseline | Baseline + Tikhonov    | Contrastive   | Contrastive + Tikhonov  |
 |:----:|:-------------:|:-------------:|:-----:|:---:|
-pgd  | 0.121 | To do     | 0 (?!) | 0 (?!) |
+pgd  | 0.121 | 0.12     | 0 (?!) | 0 (?!) |
 plb | 0.125 | To do      | 0.12      |   0.185 |
 
 #### Mean adversarial distances
 
 | attack type | Baseline | Baseline + Tikhonov    | Contrastive   | Contrastive + Tikhonov  |
 |:----:|:-------------:|:-------------:|:-----:|:---:|
-pgd | 0.147 | To do     | 0.0355 | 0.0627 |
+pgd | 0.147 | 0.16     | 0.0355 | 0.0627 |
 
 #### Max adversarial distances
 
 | attack type |   Baseline| Baseline + Tikhonov    | Contrastive   | Contrastive + Tikhonov  |
 |:----:|:-------------:|:-------------:|:-----:|:---:|
-pgd | 0.5 | To do     | 0.5 | 0.5 |
+pgd | 0.5 | 0.5     | 0.5 | 0.5 |
 plb | 0.755 |  To do    | 0.122      |   nan (?!) |
 
 To reproduce the experiments, please refer to the appropriate logging directory to find the appropriate arguments.
