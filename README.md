@@ -138,11 +138,13 @@ So far, the training finally seems to work well (accuracy values make sense).
 - [x] Add fine-tuning procedure of the contrastive model by initializing the linear classifier weights to 0 (not its biases).
 - [x] Run the fine-tuning on 100%, 10% and 1% of the labels
 - [x] Add Tikhonov Regularization to the baseline training script
+- [ ] Wrap-up the project (document well the experiments + summarize research + organize/clean this repo) <-- **In progress**
 - [ ] Train the Tikhonov regularized baseline model and attack the unregularized and regularized version. Compare. <-- **In progress**
 - [ ] Add plots to compare the attack values
 - [ ] Implement contrastive loss layer by layer and using class label information instead of purely positive/negative samples
 - [ ] Implement layer-by-layer Tikhonov regularization
 - [ ] Implement a nonlinear classifier that uses an "average class vector" and give confidence by measuring similarity between class vector and encoder output
+- [ ] It would be nice to visualize the decision boundary of such a classifier
 
 
 
