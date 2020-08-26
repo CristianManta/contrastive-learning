@@ -121,6 +121,8 @@ To reproduce the experiments, please refer to the appropriate logging directory 
 
 ![plb](/notebooks/figures/plb.png)
 
+The Jupyter notebook used to produce them can be found in the [notebooks](/notebooks) directory.
+
 ### Status
 
 #### Aug. 24
