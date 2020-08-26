@@ -249,6 +249,7 @@ def train(epoch):
 
     # Put the model in train mode (unfreeze batch norm parameters)
     model.train()
+    print("Current LR: {}".format(scheduler.get_lr()[0]))
 
     # Run through the training data
     if has_cuda:

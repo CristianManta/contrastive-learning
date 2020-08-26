@@ -117,8 +117,10 @@ To reproduce the experiments, please refer to the appropriate logging directory 
 | 93.6%    | 90.6%    |
 
 ### Plots
+#### PGD Attack
 ![pgd](/notebooks/figures/pgd.png)
 
+#### PLB Attack
 ![plb](/notebooks/figures/plb.png)
 
 The Jupyter notebook used to produce them can be found in the [notebooks](/notebooks) directory.
@@ -141,10 +143,6 @@ So far, the training finally seems to work well (accuracy values make sense).
 Attack results are in. Except for the plb row of the last table, the results are not satisfying.
 
 Tomorrow: add plots and pdf write-up.
-
-#### Aug. 26
-
-First plot is out!
 
 
 
