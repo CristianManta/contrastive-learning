@@ -138,7 +138,7 @@ Tomorrow: add plots and pdf write-up.
 #### Aug. 26
 
 First plot is out!
-![Plot1](https://github.com/AOTeam2020/ContrastiveTeamO/tree/cristian/notebooks/figures/baseline_contrastive_contrastive_tik.png)
+![Plot1](https://github.com/AOTeam2020/ContrastiveTeamO/tree/cristian/notebooks/figures/baseline_contrastive_contrastive_tik.png "Plot1")
 
 
 
