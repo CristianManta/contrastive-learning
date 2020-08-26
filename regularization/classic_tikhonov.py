@@ -367,7 +367,6 @@ def train(epoch):
         loss.backward()
 
         optimizer.step()
-        scheduler.step()
 
         if np.isnan(loss.data.item()):
             raise ValueError('model returned nan during training')
@@ -418,6 +417,7 @@ def main():
     best_loss = 10000.0
 
     for epoch in range(1, args.epochs + 1):
+        scheduler.step()
         train(epoch)
         test_loss = test()
 
