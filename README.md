@@ -135,6 +135,12 @@ Attack results are in. Except for the plb row of the last table, the results are
 
 Tomorrow: add plots and pdf write-up.
 
+#### Aug. 26
+
+First plot is out!
+![Plot1](https://github.com/AOTeam2020/ContrastiveTeamO/tree/cristian/notebooks/figures/baseline_contrastive_contrastive_tik.png)
+
+
 
 
 ### TODO
@@ -144,7 +150,7 @@ Tomorrow: add plots and pdf write-up.
 - [x] Add Tikhonov Regularization to the baseline training script
 - [x] Train the Tikhonov regularized baseline model and attack the unregularized and regularized version. Compare.
 - [ ] Wrap-up the project (document and log the experiments for reproducibility + summarize research + organize/clean this repo) <-- **In progress**
-- [ ] Add plots to compare the attack values
+- [ ] Add plots to compare the attack values <-- **In progress**
 - [ ] Implement contrastive loss layer by layer and using class label information instead of purely positive/negative samples
 - [ ] Implement layer-by-layer Tikhonov regularization
 - [ ] Implement a nonlinear classifier that uses an "average class vector" and give confidence by measuring similarity between class vector and encoder output
