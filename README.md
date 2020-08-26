@@ -116,6 +116,11 @@ To reproduce the experiments, please refer to the appropriate logging directory 
 |:--------:|:--------:|
 | 93.6%    | 90.6%    |
 
+### Plots
+![pgd](/notebooks/figures/pgd.png)
+
+![plb](/notebooks/figures/plb.png)
+
 ### Status
 
 #### Aug. 24
@@ -139,8 +144,6 @@ Tomorrow: add plots and pdf write-up.
 
 First plot is out!
 
-![Plot1](/notebooks/figures/baseline_contrastive_contrastive_tik.png)
-
 
 
 
@@ -150,8 +153,8 @@ First plot is out!
 - [x] Run the fine-tuning on 100%, 10% and 1% of the labels
 - [x] Add Tikhonov Regularization to the baseline training script
 - [x] Train the Tikhonov regularized baseline model and attack the unregularized and regularized version. Compare.
+- [x] Add plots to compare the attack values
 - [ ] Wrap-up the project (document and log the experiments for reproducibility + summarize research + organize/clean this repo) <-- **In progress**
-- [ ] Add plots to compare the attack values <-- **In progress**
 - [ ] Implement contrastive loss layer by layer and using class label information instead of purely positive/negative samples
 - [ ] Implement layer-by-layer Tikhonov regularization
 - [ ] Implement a nonlinear classifier that uses an "average class vector" and give confidence by measuring similarity between class vector and encoder output
