@@ -133,6 +133,8 @@ So far, the training finally seems to work well (accuracy values make sense).
 
 Attack results are in. Except for the plb row of the last table, the results are not satisfying.
 
+Tomorrow: add plots and pdf write-up.
+
 
 
 ### TODO
@@ -141,7 +143,7 @@ Attack results are in. Except for the plb row of the last table, the results are
 - [x] Run the fine-tuning on 100%, 10% and 1% of the labels
 - [x] Add Tikhonov Regularization to the baseline training script
 - [x] Train the Tikhonov regularized baseline model and attack the unregularized and regularized version. Compare.
-- [ ] Wrap-up the project (document well the experiments + summarize research + organize/clean this repo) <-- **In progress**
+- [ ] Wrap-up the project (document and log the experiments for reproducibility + summarize research + organize/clean this repo) <-- **In progress**
 - [ ] Add plots to compare the attack values
 - [ ] Implement contrastive loss layer by layer and using class label information instead of purely positive/negative samples
 - [ ] Implement layer-by-layer Tikhonov regularization
