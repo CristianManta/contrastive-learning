@@ -4,13 +4,13 @@
 ### Description
 All the research has been done using the ResNet50 model as the encoder for learning the representations.
 
-The [cifar10](https://github.com/AOTeam2020/ContrastiveTeamO/tree/cristian/cifar10) directory contains all the
+The [cifar10](/cifar10) directory contains all the
 training scripts and utilities for the contrastive learning model without Tikhonov regularization on the CIFAR10 dataset.
-[train.py](https://github.com/AOTeam2020/ContrastiveTeamO/blob/cristian/cifar10/train.py)
+[train.py](/cifar10/train.py)
 is the main script for training the contrastive model.
-[logreg_train.py](https://github.com/AOTeam2020/ContrastiveTeamO/blob/cristian/cifar10/logreg_train.py)
+[logreg_train.py](/cifar10/logreg_train.py)
 is the script for the linear classifier used in the linear evaluation protocol in [this paper](https://arxiv.org/pdf/2002.05709.pdf).
-[logreg_train_fine_tune.py](https://github.com/AOTeam2020/ContrastiveTeamO/blob/cristian/cifar10/logreg_train_fine_tune.py)
+[logreg_train_fine_tune.py](/cifar10/logreg_train_fine_tune.py)
 implements the fine-tuning of the whole model, **but** with the following important difference
 compared to `logreg_train.py`:
  
@@ -51,25 +51,25 @@ class LogisticRegression(torch.nn.Module):
 Indeed, I found that having 2 linear layers (with `relu` in between) *slightly* increased the accuracy, which I found appropriate for fine-tuning. Also, the idea came from the fact that this is the structure of the projection head g in [this paper](https://arxiv.org/pdf/2002.05709.pdf).
 Moreover, I found that initializing the weights to 0 (after applying `relu`) did not increase the accuracy.
 
-[train_baseline.py](https://github.com/AOTeam2020/ContrastiveTeamO/blob/cristian/cifar10/train_baseline.py)
+[train_baseline.py](/cifar10/train_baseline.py)
 is a fancy baseline training script with Tikhonov regularization options. It can also train on a random subset of the labels.
  **Important:** The Tikhonov regularization implemented here uses the finite difference approximation from [this repository](https://github.com/cfinlay/tulip/tree/master/cifar10).
  
-[train_baseline_exact.py](https://github.com/AOTeam2020/ContrastiveTeamO/blob/cristian/cifar10/train_baseline_exact.py)
+[train_baseline_exact.py](/cifar10/train_baseline_exact.py)
 does the same job as `train_baseline.py`, but I replaced the finite difference approximation by a double backpropagation for better accuracy with "less smooth" loss functions at the cost of scalability. I kept both versions because they will likely both be useful in different circumstances.
 
 The `cifar10` directory also contains all the attack codes. I adopted the convention that, if a name is not followed by "_baseline", then it refers to the basic contrastive model. The "_500" and "_5000" appended to the names of some files or directories refer to the number of labels that the model had access to during training.
 
-The [imagenet](https://github.com/AOTeam2020/ContrastiveTeamO/tree/cristian/imagenet)
+The [imagenet](/imagenet)
 directory has a similar goal to the `cifar10` one, but has been much less explored.
 
-The [regularizaztion](https://github.com/AOTeam2020/ContrastiveTeamO/tree/cristian/regularization)
+The [regularizaztion](/regularization)
  directory contains the training scripts for the Tikhonov regularized *contrastive models*. The structure is similar to
- that of `cifar10` directory. The two main scripts are [classic_tikhonov.py](https://github.com/AOTeam2020/ContrastiveTeamO/blob/cristian/regularization/classic_tikhonov.py)
- and [classic_tikhonov_exact.py](https://github.com/AOTeam2020/ContrastiveTeamO/blob/cristian/regularization/classic_tikhonov_exact.py)
+ that of `cifar10` directory. The two main scripts are [classic_tikhonov.py](/regularization/classic_tikhonov.py)
+ and [classic_tikhonov_exact.py](/regularization/classic_tikhonov_exact.py)
  for training a Tikhonov regularized contrastive model. The difference between them is the implementation of the Tikhonov penalty term (see `train_baseline.py` vs. `train_baseline_exact.py` above).
  
-[layer_wise.py](https://github.com/AOTeam2020/ContrastiveTeamO/blob/cristian/regularization/layer_wise.py)
+[layer_wise.py](/regularization/layer_wise.py)
 is an **experimental** script towards the layer-by-layer regularization.
 The last thing that I did with it was to figure out how to isolate the major layers of the resnet model in order to call them separately, thus enabling the possibility to add a penalty term to each layer. **This script is not in a working state**.
 
@@ -161,10 +161,3 @@ First plot is out!
 - [ ] Implement layer-by-layer Tikhonov regularization
 - [ ] Implement a nonlinear classifier that uses an "average class vector" and give confidence by measuring similarity between class vector and encoder output
 - [ ] It would be nice to visualize the decision boundary of such a classifier
-
-
-
-
-
-
-
