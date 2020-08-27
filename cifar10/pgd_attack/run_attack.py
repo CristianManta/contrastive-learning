@@ -34,12 +34,12 @@ parser = argparse.ArgumentParser('Attack an example CIFAR10 example with L2PGD')
 parser.add_argument('--data-dir', type=str, default='/home/math/oberman-lab/data/',
                     metavar='DIR', help='Directory where CIFAR10 data is saved')
 parser.add_argument('--model-path', type=str,
-                    default='/home/math/dragos.manta/contrastive/ContrastiveTeamO/regularization/runs/encoder_best'
+                    default='/home/math/dragos.manta/contrastive/ContrastiveTeamO/regularization/logs/Aug-26-2020_15-57-27/encoder_best'
                             '.pth.tar',
                     metavar='PATH',
                     help='path to the .pth.tar trained model file')
 parser.add_argument('--clf-path', type=str,
-                    default='/home/math/dragos.manta/contrastive/ContrastiveTeamO/regularization/runs'
+                    default='/home/math/dragos.manta/contrastive/ContrastiveTeamO/regularization/logs/Aug-26-2020_15-57-27'
                             '/classifier_best.pth.tar',
                     metavar='PATH',
                     help='path to the .pth.tar trained classifier file')

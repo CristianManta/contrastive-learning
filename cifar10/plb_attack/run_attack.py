@@ -38,9 +38,9 @@ parser = argparse.ArgumentParser('Attack an example CIFAR-10 encoder model with 
 groups0 = parser.add_argument_group('Required arguments')
 groups0.add_argument('--data-dir', type=str, default='/home/math/oberman-lab/data',
         help='Directory where CIFAR10 data is saved')
-groups0.add_argument('--model-path', type=str,default='/home/math/dragos.manta/contrastive/ContrastiveTeamO/regularization/runs/encoder_best.pth.tar',
+groups0.add_argument('--model-path', type=str,default='/home/math/dragos.manta/contrastive/ContrastiveTeamO/regularization/logs/Aug-26-2020_15-57-27/encoder_best.pth.tar',
         metavar='DIR', help='Directory where model is saved')
-groups0.add_argument('--clf-path', type=str,default='/home/math/dragos.manta/contrastive/ContrastiveTeamO/regularization/runs/classifier_best.pth.tar',
+groups0.add_argument('--clf-path', type=str,default='/home/math/dragos.manta/contrastive/ContrastiveTeamO/regularization/logs/Aug-26-2020_15-57-27/classifier_best.pth.tar',
         metavar='DIR', help='Directory where model is saved')
 groups0.add_argument('--parallel', action='store_true', dest='parallel',
         help='only allow exact matches to model keys during loading')

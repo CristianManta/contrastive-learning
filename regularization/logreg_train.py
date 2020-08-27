@@ -53,7 +53,7 @@ parser.add_argument('--random-subset', action='store_true',
                     default=False, help='use random subset of test images (default: False)')
 
 parser.add_argument('--logdir', type=str, default=None, metavar='DIR',
-                    help='directory for outputting log files. (default: ./logs/TIMESTAMP/)')
+                    help='directory for outputting log files. (default: encoder directory)')
 
 parser.add_argument('--encoder', type=str, default=None, metavar='DIR', required=True,
                     help='path to directory containing the pre-trained encoder. Required.')

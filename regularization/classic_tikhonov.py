@@ -418,8 +418,8 @@ def main():
     best_loss = 10000.0
 
     for epoch in range(1, args.epochs + 1):
-        scheduler.step()
         train(epoch)
+        scheduler.step()
         test_loss = test()
 
         torch.save({'state_dict': model.state_dict()}, './runs/encoder_checkpoint.pth.tar')

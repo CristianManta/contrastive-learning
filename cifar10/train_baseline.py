@@ -479,11 +479,8 @@ def main():
     time = 0.
     pct0 = 100.
     for e in range(args.epochs):
-
-        # Update the learning rate
-        schedule.step()  # Should be called before optimizer.step()
-
         time = train(e, time)
+        schedule.step()  # Should be called after optimizer.step()
 
         loss, pct_err = test(e, time)
         if pct_err >= pct_max:
