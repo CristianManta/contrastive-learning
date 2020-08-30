@@ -38,9 +38,9 @@ parser = argparse.ArgumentParser('Attack an example CIFAR-10 encoder model with 
 groups0 = parser.add_argument_group('Required arguments')
 groups0.add_argument('--data-dir', type=str, default='/home/math/oberman-lab/data',
         help='Directory where CIFAR10 data is saved')
-groups0.add_argument('--model-path', type=str,default='/home/math/dragos.manta/contrastive/ContrastiveTeamO/regularization/logs/Aug-26-2020_15-57-27/encoder_best.pth.tar',
+groups0.add_argument('--model-path', type=str,default='/home/math/dragos.manta/contrastive/ContrastiveTeamO/regularization/runs/runs_lambda_10/encoder_best.pth.tar',
         metavar='DIR', help='Directory where model is saved')
-groups0.add_argument('--clf-path', type=str,default='/home/math/dragos.manta/contrastive/ContrastiveTeamO/regularization/logs/Aug-26-2020_15-57-27/classifier_best.pth.tar',
+groups0.add_argument('--clf-path', type=str,default='/home/math/dragos.manta/contrastive/ContrastiveTeamO/regularization/runs/runs_lambda_10/classifier_best.pth.tar',
         metavar='DIR', help='Directory where model is saved')
 groups0.add_argument('--parallel', action='store_true', dest='parallel',
         help='only allow exact matches to model keys during loading')
@@ -68,8 +68,8 @@ groups0.add_argument('--model-args',type=str,
         ' (default: "{}")')
 
 groups2 = parser.add_argument_group('Optional attack arguments')
-groups2.add_argument('--num-images', type=int, default=1000,metavar='N',
-        help='total number of images to attack (default: 1000)')
+groups2.add_argument('--num-images', type=int, default=10000,metavar='N',
+        help='total number of images to attack (default: 10000)')
 #groups2.add_argument('--num-train-images', type=int, default=5000,metavar='N',
 #        help='total number of images to train the Logistic Regression classifier (default: 5000)')
 groups2.add_argument('--batch-size', type=int, default=100,metavar='N',

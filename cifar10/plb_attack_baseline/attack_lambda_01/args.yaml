@@ -4,9 +4,8 @@ batch_size: 100
 beta: 0.75
 bias: false
 bn: true
-clf_path: /home/math/dragos.manta/contrastive/ContrastiveTeamO/cifar10/runs/classifier_best.pth.tar
 criterion: logistic
-data_dir: /home/math/oberman-lab/data
+data_dir: /home/math/oberman-lab/data/cifar10
 dropout: 0
 dt: 0.1
 gamma: 0.05
@@ -15,7 +14,7 @@ last_layer_nonlinear: false
 max_inner: 30
 max_outer: 30
 model_args: '{}'
-model_path: /home/math/dragos.manta/contrastive/ContrastiveTeamO/cifar10/runs/encoder_best.pth.tar
+model_path: /home/math/dragos.manta/contrastive/ContrastiveTeamO/cifar10/runs_baseline_tik/runs_lambda_01/best.pth.tar
 norm: L2
 num_images: 10000
 parallel: false

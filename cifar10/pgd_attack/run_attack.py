@@ -34,12 +34,12 @@ parser = argparse.ArgumentParser('Attack an example CIFAR10 example with L2PGD')
 parser.add_argument('--data-dir', type=str, default='/home/math/oberman-lab/data/',
                     metavar='DIR', help='Directory where CIFAR10 data is saved')
 parser.add_argument('--model-path', type=str,
-                    default='/home/math/dragos.manta/contrastive/ContrastiveTeamO/regularization/logs/Aug-26-2020_15-57-27/encoder_best'
+                    default='/home/math/dragos.manta/contrastive/ContrastiveTeamO/regularization/runs/runs_lambda_10/encoder_best'
                             '.pth.tar',
                     metavar='PATH',
                     help='path to the .pth.tar trained model file')
 parser.add_argument('--clf-path', type=str,
-                    default='/home/math/dragos.manta/contrastive/ContrastiveTeamO/regularization/logs/Aug-26-2020_15-57-27'
+                    default='/home/math/dragos.manta/contrastive/ContrastiveTeamO/regularization/runs/runs_lambda_10'
                             '/classifier_best.pth.tar',
                     metavar='PATH',
                     help='path to the .pth.tar trained classifier file')
@@ -72,8 +72,8 @@ parser.add_argument('--criterion', type=str, default='top1',
 parser.add_argument('--loss-function', type=str, default='KL',
                     help='the loss function we will use in PGD (Choices = [KL,CW])')
 
-parser.add_argument('--num-images', type=int, default=1000, metavar='N',
-                    help='total number of images to attack (default: 1000)')
+parser.add_argument('--num-images', type=int, default=10000, metavar='N',
+                    help='total number of images to attack (default: 10000)')
 parser.add_argument('--batch-size', type=int, default=100, metavar='N',
                     help='number of images to attack at a time (default: 100) ')
 parser.add_argument('--norm', type=str, default='L2', metavar='NORM',

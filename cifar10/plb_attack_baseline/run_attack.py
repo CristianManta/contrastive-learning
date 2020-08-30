@@ -36,7 +36,7 @@ groups0.add_argument('--data-dir', type=str, default='/home/math/oberman-lab/dat
         help='Directory where CIFAR10 data is saved')
 
 parser.add_argument('--model-path', type=str,
-                    default='/home/math/dragos.manta/contrastive/ContrastiveTeamO/cifar10/runs_baseline_tik/runs/best'
+                    default='/home/math/dragos.manta/contrastive/ContrastiveTeamO/cifar10/runs_baseline_tik/runs_lambda_10/best'
                             '.pth.tar',
                     metavar='PATH',
                     help='path to the .pth.tar trained model file')
@@ -67,8 +67,8 @@ groups0.add_argument('--model-args',type=str,
         ' (default: "{}")')
 
 groups2 = parser.add_argument_group('Optional attack arguments')
-groups2.add_argument('--num-images', type=int, default=1000,metavar='N',
-        help='total number of images to attack (default: 1000)')
+groups2.add_argument('--num-images', type=int, default=10000,metavar='N',
+        help='total number of images to attack (default: 10000)')
 #groups2.add_argument('--num-train-images', type=int, default=5000,metavar='N',
 #        help='total number of images to train the Logistic Regression classifier (default: 5000)')
 groups2.add_argument('--batch-size', type=int, default=100,metavar='N',

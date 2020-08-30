@@ -117,11 +117,25 @@ To reproduce the experiments, please refer to the appropriate logging directory 
 | 93.6%    | 90.6%    |
 
 ### Plots
-#### PGD Attack
-![pgd](/notebooks/figures/pgd.png)
+#### PGD Attack (`penalty=0.1`)
+![pgd](/notebooks/figures/pgd_lambda_01.png)
 
-#### PLB Attack
-![plb](/notebooks/figures/plb.png)
+#### PLB Attack (`penalty=0.1`)
+![plb](/notebooks/figures/plb_lambda_01.png)
+
+#### PGD Attack (`penalty=1`)
+![pgd](/notebooks/figures/pgd_lambda_1.png)
+
+#### PLB Attack (`penalty=1`)
+![plb](/notebooks/figures/plb_lambda_1.png)
+
+#### PGD Attack (`penalty=10`)
+![pgd](/notebooks/figures/pgd_lambda_10.png)
+
+#### PLB Attack (`penalty=10`)
+![plb](/notebooks/figures/plb_lambda_10.png)
+
+
 
 The Jupyter notebook used to produce them can be found in the [notebooks](/notebooks) directory.
 
@@ -154,8 +168,11 @@ Tomorrow: add plots and pdf write-up.
 - [x] Add Tikhonov Regularization to the baseline training script
 - [x] Train the Tikhonov regularized baseline model and attack the unregularized and regularized version. Compare.
 - [x] Add plots to compare the attack values
-- [ ] Wrap-up the project (document and log the experiments for reproducibility + summarize research + organize/clean this repo) <-- **In progress**
+- [ ] Wrap-up Summer 2020 project (document and log the experiments for reproducibility + summarize research + organize/clean this repo) <-- **In progress**
+---
+#### Continuation of the Project
 - [ ] Implement contrastive loss layer by layer and using class label information instead of purely positive/negative samples
 - [ ] Implement layer-by-layer Tikhonov regularization
 - [ ] Implement a nonlinear classifier that uses an "average class vector" and give confidence by measuring similarity between class vector and encoder output
 - [ ] It would be nice to visualize the decision boundary of such a classifier
+- [ ] ...
