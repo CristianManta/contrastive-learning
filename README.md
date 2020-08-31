@@ -1,6 +1,8 @@
 # ContrastiveTeam0
 
 ## A place to push new ideas for Contrastive Learning
+### PDF Research Summary for 2020
+For a brief, yet complete, overview of the research, please refer to [Research_Summary.pdf](/Research_Summary.pdf)
 ### Description
 All the research has been done using the ResNet50 model as the encoder for learning the representations.
 
@@ -138,7 +140,7 @@ The Jupyter notebook used to produce them can be found in the [notebooks](/noteb
 - [x] Add Tikhonov Regularization to the baseline training script
 - [x] Train the Tikhonov regularized baseline model and attack the unregularized and regularized version. Compare.
 - [x] Add plots to compare the attack values
-- [ ] Wrap-up Summer 2020 project (document and log the experiments for reproducibility + summarize research + organize/clean this repo) <-- **In progress**
+- [x] Wrap-up Summer 2020 project (document and log the experiments for reproducibility + summarize research + organize/clean this repo)
 ---
 #### Continuation of the Project
 - [ ] Implement contrastive loss layer by layer and using class label information instead of purely positive/negative samples
