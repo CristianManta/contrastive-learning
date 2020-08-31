@@ -13,6 +13,6 @@ loss_function: KL
 model_args: '{}'
 model_path: /home/math/dragos.manta/contrastive/ContrastiveTeamO/regularization/runs/runs_lambda_1/encoder_best.pth.tar
 norm: L2
-num_images: 10000
-random_subset: false
+num_images: 1000
+random_subset: true
 seed: 0

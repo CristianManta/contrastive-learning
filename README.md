@@ -4,6 +4,10 @@
 ### Description
 All the research has been done using the ResNet50 model as the encoder for learning the representations.
 
+This README was organized with an effort to offer an overview of the research as well as
+ to explain the role of each important directory in order to make experiment reproducibility as easy as possible.
+  To reproduce any experiment, please refer to the appropriate logging directory to find the appropriate arguments.
+
 The [cifar10](/cifar10) directory contains all the
 training scripts and utilities for the contrastive learning model without Tikhonov regularization on the CIFAR10 dataset.
 [train.py](/cifar10/train.py)
@@ -64,7 +68,7 @@ The [imagenet](/imagenet)
 directory has a similar goal to the `cifar10` one, but has been much less explored.
 
 The [regularizaztion](/regularization)
- directory contains the training scripts for the Tikhonov regularized *contrastive models*. The structure is similar to
+ directory contains the training scripts for the **Tikhonov** regularized *contrastive models*. The structure is similar to
  that of `cifar10` directory. The two main scripts are [classic_tikhonov.py](/regularization/classic_tikhonov.py)
  and [classic_tikhonov_exact.py](/regularization/classic_tikhonov_exact.py)
  for training a Tikhonov regularized contrastive model. The difference between them is the implementation of the Tikhonov penalty term (see `train_baseline.py` vs. `train_baseline_exact.py` above).
@@ -87,78 +91,44 @@ In addition, all the directories inside the attack directories are for logging t
 | 10%       | 64.39% |   70.83% | 71.36% |
 | 1%        | 30.92% |    67.56%| 66.94% |
 
-### Attacks (doesn't include fine-tuned contrastive yet)
-
-#### Median adversarial distances
-
-| attack type | Baseline | Baseline + Tikhonov    | Contrastive   | Contrastive + Tikhonov  |
-|:----:|:-------------:|:-------------:|:-----:|:---:|
-pgd  | 0.121 | 0.12     | 0 (?!) | 0 (?!) |
-plb | 0.125 | 0.134     | 0.12      |   0.0715 |
-
-#### Mean adversarial distances
-
-| attack type | Baseline | Baseline + Tikhonov    | Contrastive   | Contrastive + Tikhonov  |
-|:----:|:-------------:|:-------------:|:-----:|:---:|
-pgd | 0.147 | 0.16     | 0.0355 | 0.0602 |
-
-#### Max adversarial distances
-
-| attack type |   Baseline| Baseline + Tikhonov    | Contrastive   | Contrastive + Tikhonov  |
-|:----:|:-------------:|:-------------:|:-----:|:---:|
-pgd | 0.5 | 0.5     | 0.5 | 0.5 |
-plb | 0.755 |  0.566    | 0.122      |   1.16 |
-
-To reproduce the experiments, please refer to the appropriate logging directory to find the appropriate arguments.
+To see all accuracies of models obtained from all the experiments, please refer to the appropriate logging directory.
+For example, [this file](/regularization/runs/runs_lambda_01/clf_accuracy.txt)
+contains the linear evaluation accuracy of the regularized contrastive model with `penalty=0.1`.
 
 ### Accuracy Claims from [this paper](https://arxiv.org/pdf/2002.05709.pdf)
 | Baseline (supervised ResNet50) | Contrastive |
 |:--------:|:--------:|
 | 93.6%    | 90.6%    |
 
+
+### Some Attack Statistics
+Please refer to [attack_statistics.ipynb](/notebooks/attack_statistics.ipynb).
+
 ### Plots
-#### PGD Attack (`penalty=0.1`)
+#### `penalty=0.1`
+##### PGD Attack
 ![pgd](/notebooks/figures/pgd_lambda_01.png)
 
-#### PLB Attack (`penalty=0.1`)
+##### PLB Attack
 ![plb](/notebooks/figures/plb_lambda_01.png)
 
-#### PGD Attack (`penalty=1`)
+#### `penalty=1`
+##### PGD Attack
 ![pgd](/notebooks/figures/pgd_lambda_1.png)
 
-#### PLB Attack (`penalty=1`)
+##### PLB Attack
 ![plb](/notebooks/figures/plb_lambda_1.png)
 
-#### PGD Attack (`penalty=10`)
+#### `penalty=10`
+##### PGD Attack
 ![pgd](/notebooks/figures/pgd_lambda_10.png)
 
-#### PLB Attack (`penalty=10`)
+##### PLB Attack
 ![plb](/notebooks/figures/plb_lambda_10.png)
 
 
 
 The Jupyter notebook used to produce them can be found in the [notebooks](/notebooks) directory.
-
-### Status
-
-#### Aug. 24
-I replaced the finite difference gradient approximation from [this paper](https://arxiv.org/pdf/1905.11468.pdf) and [this repo](https://github.com/cfinlay/tulip) by an exact computation (at the cost of scalability, but the scripts are working fine on CIFAR10 at least).
-I had to do this in order to fix the problem that the accuracy of the baseline model was below 20% suddenly when applying Tikhonov (with `penalty=0.1`), while it was 94% without it.
-The loss landscape must be so non smooth in this case that the finite difference approximation was very bad.
-
-~~Now the penalty parameter used for the training of the Tikhonov regularized baseline model (0.1) is apparently too small (I know that because the attack distances were smaller than for the unregularized model, so it's within the same margin of error).~~ I'm re-running many scripts in parallel with varying penalties during the night.
-
-#### Aug. 25
-The actual issue was that `grad` needed `create_graph=True` passed in as parameter in order to re-use it again for further differentiation. Otherwise any penalty would have no effect at all with this new implementation.
-
-Now running again the baseline + Tikhonov script with `penalty=0.1`, as well as contrastive + (classic) Tikhonov with the same `penalty`.
-So far, the training finally seems to work well (accuracy values make sense).
-
-Attack results are in. Except for the plb row of the last table, the results are not satisfying.
-
-Tomorrow: add plots and pdf write-up.
-
-
 
 
 ### TODO

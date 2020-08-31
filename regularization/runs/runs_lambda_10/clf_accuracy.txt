@@ -1,1 +1,1 @@
-Best accuracy on the test set: 70.76%
+Best accuracy on the test set: 60.71%

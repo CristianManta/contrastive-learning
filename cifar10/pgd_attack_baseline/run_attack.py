@@ -61,8 +61,8 @@ parser.add_argument('--criterion', type=str, default='top1',
 parser.add_argument('--loss-function', type=str, default='KL',
         help='the loss function we will use in PGD (Choices = [KL,CW])')
 
-parser.add_argument('--num-images', type=int, default=10000,metavar='N',
-        help='total number of images to attack (default: 10000)')
+parser.add_argument('--num-images', type=int, default=1000,metavar='N',
+        help='total number of images to attack (default: 1000)')
 parser.add_argument('--batch-size', type=int, default=100,metavar='N',
         help='number of images to attack at a time (default: 100) ')
 parser.add_argument('--norm', type=str, default='L2',metavar='NORM',
@@ -72,7 +72,7 @@ parser.add_argument('--norm', type=str, default='L2',metavar='NORM',
 parser.add_argument('--seed', type=int, default=0,
         help='seed for RNG (default: 0)')
 parser.add_argument('--random-subset', action='store_true',
-        default=False, help='use random subset of test images (default: False)')
+        default=True, help='use random subset of test images (default: True)')
 
 parser.add_argument('--eps', type=float, default=0.5,
         help='max. allowed perturbation')

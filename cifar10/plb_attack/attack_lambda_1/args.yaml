@@ -17,9 +17,9 @@ max_outer: 30
 model_args: '{}'
 model_path: /home/math/dragos.manta/contrastive/ContrastiveTeamO/regularization/runs/runs_lambda_1/encoder_best.pth.tar
 norm: L2
-num_images: 10000
+num_images: 1000
 parallel: false
-random_subset: false
+random_subset: true
 save_images: false
 seed: 0
 strict: false

@@ -67,8 +67,8 @@ groups0.add_argument('--model-args',type=str,
         ' (default: "{}")')
 
 groups2 = parser.add_argument_group('Optional attack arguments')
-groups2.add_argument('--num-images', type=int, default=10000,metavar='N',
-        help='total number of images to attack (default: 10000)')
+groups2.add_argument('--num-images', type=int, default=1000,metavar='N',
+        help='total number of images to attack (default: 1000)')
 #groups2.add_argument('--num-train-images', type=int, default=5000,metavar='N',
 #        help='total number of images to train the Logistic Regression classifier (default: 5000)')
 groups2.add_argument('--batch-size', type=int, default=100,metavar='N',
@@ -83,7 +83,7 @@ groups2.add_argument('--init-type',type=str,default='gaussian',
 groups2.add_argument('--seed', type=int, default=0,
         help='seed for RNG (default: 0)')
 groups2.add_argument('--random-subset', action='store_true',
-        default=False, help='use random subset of test images (default: False)')
+        default=True, help='use random subset of test images (default: True)')
 
 group1 = parser.add_argument_group('Attack hyperparameters')
 group1.add_argument('--dt', type=float, default=0.1, help='step size (default: 0.1)')

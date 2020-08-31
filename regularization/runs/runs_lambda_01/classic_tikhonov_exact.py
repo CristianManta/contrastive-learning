@@ -303,8 +303,8 @@ def train(epoch):
         dlmean = torch.tensor(np.nan)
         dlmax = torch.tensor(np.nan)
         if regularizing:
-            tik_penalty_xis = nv_xis.pow(2).mean() / 2
-            tik_penalty_xjs = nv_xjs.pow(2).mean() / 2
+            tik_penalty_xis = nv_xis.pow(2).sum() / 2
+            tik_penalty_xjs = nv_xjs.pow(2).sum() / 2
             tik_penalty = 0.5 * (tik_penalty_xis + tik_penalty_xjs)
             # print(f"loss before: {loss}")
             loss = loss + tik * tik_penalty
@@ -367,8 +367,8 @@ def main():
     best_model_path = os.path.join(args.logdir, 'encoder_best.pth.tar')
 
     for epoch in range(1, args.epochs + 1):
-        scheduler.step()
         train(epoch)
+        scheduler.step()
         test_loss = test()
 
         torch.save({'state_dict': model.state_dict()}, save_model_path)
