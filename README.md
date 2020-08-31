@@ -104,7 +104,7 @@ contains the linear evaluation accuracy of the regularized contrastive model wit
 
 
 ### Some Attack Statistics
-Please refer to [attack_statistics.ipynb](/notebooks/attack_statistics.ipynb).
+Please refer to [attack_statistics.ipynb](/notebooks/attack_statistics.ipynb) for statistics about the adversarial distances.
 
 ### Plots
 #### `penalty=0.1`
