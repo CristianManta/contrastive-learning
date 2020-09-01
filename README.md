@@ -135,10 +135,16 @@ Please refer to [attack_statistics.ipynb](/notebooks/attack_statistics.ipynb) fo
 ##### PLB Attack
 ![plb](/notebooks/figures/plb_lambda_10.png)
 
-
-
 The Jupyter notebook used to produce them can be found in the [notebooks](/notebooks) directory.
 
+### Accuracy of the Regularized Models on 100% of the Test Set
+
+| | Baseline | Contrastive |
+|:----|:-----:|:-----:|
+|`lambda = 0`| 93.93% | 74.79%|
+|`lambda = 0.1`| 93.34% | 71.9%|
+|`lambda = 1`| 93.3%| 67.76%|
+|`lambda = 10`| 89.69%| 60.71%|
 
 ### TODO
 - [x] Adapt Chris's baseline training script to our experiments. In particular, add option to train on a subset of the labels. Run it on 100%, 10% and 1% of the labels.
