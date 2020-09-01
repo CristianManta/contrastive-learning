@@ -3,6 +3,13 @@
 ## A place to push new ideas for Contrastive Learning
 ### PDF Research Summary for 2020
 For a brief, yet complete, overview of the research, please refer to [Research_Summary.pdf](/Research_Summary.pdf)
+### Environment Setup
+In order to use this repository without any package versions incompatibility issues,
+you can install the `conda` package manager and create the same virtual environment that was used for this repository by running this command inside the `ContrastiveTeamO` directory:
+
+```
+conda create --name <choose_a_name> --file requirements.txt
+```
 ### Description
 All the research has been done using the ResNet50 model as the encoder for learning the representations.
 
